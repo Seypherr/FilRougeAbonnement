@@ -61,6 +61,22 @@ const admin = {
   updatedAt: new Date()
 };
 
+const subscription = {
+  id: "33333333-3333-4333-8333-333333333333",
+  name: "Netflix",
+  description: null,
+  price: 12,
+  billingCycle: "MONTHLY",
+  renewalDate: new Date("2026-05-15T00:00:00.000Z"),
+  status: "ACTIVE",
+  paymentMethod: null,
+  userId: user.id,
+  categoryId: null,
+  category: null,
+  createdAt: new Date(),
+  updatedAt: new Date()
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -109,23 +125,7 @@ describe("subscription API", () => {
       .expect(201);
 
     mockPrisma.user.findUnique.mockResolvedValueOnce(user);
-    mockPrisma.subscription.findMany.mockResolvedValueOnce([
-      {
-        id: "33333333-3333-4333-8333-333333333333",
-        name: "Netflix",
-        description: null,
-        price: 12,
-        billingCycle: "MONTHLY",
-        renewalDate: new Date(),
-        status: "ACTIVE",
-        paymentMethod: null,
-        userId: user.id,
-        categoryId: null,
-        category: null,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
+    mockPrisma.subscription.findMany.mockResolvedValueOnce([subscription]);
 
     const response = await agent.get("/api/subscriptions").expect(200);
 
@@ -135,6 +135,102 @@ describe("subscription API", () => {
         where: expect.objectContaining({ userId: user.id })
       })
     );
+  });
+
+  it("creates a subscription for the authenticated user", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.create.mockResolvedValueOnce(subscription);
+
+    const response = await agent
+      .post("/api/subscriptions")
+      .send({
+        name: "Netflix",
+        price: 12,
+        billingCycle: "MONTHLY",
+        renewalDate: "2026-05-15T00:00:00.000Z"
+      })
+      .expect(201);
+
+    expect(response.body.subscription.name).toBe("Netflix");
+    expect(mockPrisma.subscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: user.id })
+      })
+    );
+  });
+
+  it("updates a subscription owned by the authenticated user", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(subscription);
+    mockPrisma.subscription.update.mockResolvedValueOnce({ ...subscription, name: "Netflix Premium" });
+
+    const response = await agent
+      .put(`/api/subscriptions/${subscription.id}`)
+      .send({ name: "Netflix Premium" })
+      .expect(200);
+
+    expect(response.body.subscription.name).toBe("Netflix Premium");
+  });
+
+  it("archives a subscription instead of deleting it for a user", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(subscription);
+    mockPrisma.subscription.update.mockResolvedValueOnce({ ...subscription, status: "ARCHIVED" });
+
+    const response = await agent.delete(`/api/subscriptions/${subscription.id}`).expect(200);
+
+    expect(response.body.subscription.status).toBe("ARCHIVED");
+    expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { status: "ARCHIVED" }
+      })
+    );
+  });
+
+  it("does not allow a user to update another user's subscription", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(null);
+
+    await agent
+      .put(`/api/subscriptions/${subscription.id}`)
+      .send({ name: "Forbidden update" })
+      .expect(404);
   });
 });
 
@@ -164,5 +260,22 @@ describe("admin API", () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(user);
 
     await agent.get("/api/admin/users").expect(403);
+  });
+
+  it("allows an admin to delete another user", async () => {
+    const password = await bcrypt.hash("Admin123!", 12);
+    const agent = request.agent(app);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ ...admin, password });
+    await agent.post("/api/auth/login").send({ email: admin.email, password: "Admin123!" }).expect(200);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(admin);
+    mockPrisma.user.delete.mockResolvedValueOnce(user);
+
+    await agent.delete(`/api/admin/users/${user.id}`).expect(204);
+
+    expect(mockPrisma.user.delete).toHaveBeenCalledWith({
+      where: { id: user.id }
+    });
   });
 });

@@ -133,6 +133,12 @@ function AuthScreen({ t, language, setLanguage }) {
 
 function Shell({ t, language, setLanguage, user, logout }) {
   const [tab, setTab] = useState("dashboard");
+  const [toast, setToast] = useState(null);
+
+  const notify = (message, type = "success") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2800);
+  };
 
   const navItems = [
     ["dashboard", t.dashboard, CircleDollarSign],
@@ -147,7 +153,7 @@ function Shell({ t, language, setLanguage, user, logout }) {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div>
             <h1 className="text-xl font-bold">{t.appName}</h1>
-            <p className="flex items-center gap-2 text-sm text-gray-600"><UserRound size={16} /> {user.name} · {user.role}</p>
+            <p className="flex items-center gap-2 text-sm text-gray-600"><UserRound size={16} /> {user.name} - {user.role}</p>
           </div>
           <div className="flex items-center gap-2">
             <LanguageButton language={language} setLanguage={setLanguage} />
@@ -171,10 +177,11 @@ function Shell({ t, language, setLanguage, user, logout }) {
         </nav>
 
         {tab === "dashboard" && <Dashboard t={t} setTab={setTab} />}
-        {tab === "subscriptions" && <SubscriptionsPage t={t} />}
+        {tab === "subscriptions" && <SubscriptionsPage t={t} notify={notify} />}
         {tab === "statistics" && <StatisticsPage t={t} />}
-        {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} />}
+        {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} notify={notify} />}
       </div>
+      <Toast toast={toast} />
     </main>
   );
 }
@@ -188,17 +195,35 @@ function LanguageButton({ language, setLanguage }) {
   );
 }
 
+function Toast({ toast }) {
+  if (!toast) {
+    return null;
+  }
+
+  const color = toast.type === "error" ? "bg-red-700" : "bg-emerald-700";
+
+  return (
+    <div className={`fixed bottom-4 left-4 right-4 z-50 rounded-md px-4 py-3 text-sm font-semibold text-white shadow-lg sm:left-auto sm:right-6 sm:w-96 ${color}`}>
+      {toast.message}
+    </div>
+  );
+}
+
 function Dashboard({ t, setTab }) {
   const { subscriptions, totalMonthlyAmount, loading } = useSubscriptions(t);
   const activeCount = subscriptions.filter((item) => item.status === "ACTIVE").length;
   const archivedCount = subscriptions.filter((item) => item.status === "ARCHIVED").length;
+  const upcomingRenewals = [...subscriptions]
+    .filter((item) => item.status === "ACTIVE")
+    .sort((a, b) => new Date(a.renewalDate) - new Date(b.renewalDate))
+    .slice(0, 3);
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <Metric title={t.totalMonthly} value={`${totalMonthlyAmount.toFixed(2)} €`} loading={loading} />
+      <Metric title={t.totalMonthly} value={`${totalMonthlyAmount.toFixed(2)} EUR`} loading={loading} highlight />
       <Metric title={t.activeSubscriptions} value={activeCount} loading={loading} />
-      <Metric title={t.archived} value={archivedCount} loading={loading} />
-      <Card className="md:col-span-3">
+      <Metric title={t.estimatedYearly} value={`${(totalMonthlyAmount * 12).toFixed(2)} EUR`} loading={loading} />
+      <Card className="md:col-span-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold">{t.subscriptions}</h2>
@@ -207,15 +232,31 @@ function Dashboard({ t, setTab }) {
           <Button onClick={() => setTab("subscriptions")}><Plus size={16} />{t.addSubscription}</Button>
         </div>
       </Card>
+      <Metric title={t.archived} value={archivedCount} loading={loading} />
+      <Card className="md:col-span-3">
+        <h2 className="mb-3 text-lg font-bold">{t.nextRenewals}</h2>
+        <div className="grid gap-2 md:grid-cols-3">
+          {upcomingRenewals.length === 0 ? (
+            <p className="text-sm text-gray-600">{t.noRenewals}</p>
+          ) : (
+            upcomingRenewals.map((item) => (
+              <div className="rounded-md bg-surface p-3" key={item.id}>
+                <p className="font-semibold">{item.name}</p>
+                <p className="text-sm text-gray-600">{new Date(item.renewalDate).toLocaleDateString()}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
 
-function Metric({ title, value, loading }) {
+function Metric({ title, value, loading, highlight = false }) {
   return (
-    <Card>
+    <Card className={highlight ? "border-ink" : ""}>
       <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className="mt-2 text-3xl font-bold">{loading ? "..." : value}</p>
+      <p className="mt-2 text-3xl font-bold tracking-normal">{loading ? "..." : value}</p>
     </Card>
   );
 }
@@ -252,7 +293,7 @@ function useSubscriptions() {
   return { subscriptions, totalMonthlyAmount, categories, loading, error, load };
 }
 
-function SubscriptionsPage({ t }) {
+function SubscriptionsPage({ t, notify }) {
   const { subscriptions, categories, loading, error, load } = useSubscriptions();
   const [filters, setFilters] = useState({ search: "", status: "" });
   const [form, setForm] = useState(emptySubscription);
@@ -280,8 +321,10 @@ function SubscriptionsPage({ t }) {
     try {
       if (editingId) {
         await apiRequest(`/subscriptions/${editingId}`, { method: "PUT", body: payload });
+        notify(t.subscriptionUpdated);
       } else {
         await apiRequest("/subscriptions", { method: "POST", body: payload });
+        notify(t.subscriptionCreated);
       }
       setForm(emptySubscription);
       setEditingId(null);
@@ -305,8 +348,23 @@ function SubscriptionsPage({ t }) {
     });
   };
 
+  const archive = async (subscription) => {
+    if (!window.confirm(t.confirmArchive)) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/subscriptions/${subscription.id}`, { method: "DELETE" });
+      notify(t.subscriptionArchived);
+      load();
+    } catch (err) {
+      setFormError(err.message);
+      notify(err.message, "error");
+    }
+  };
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
       <Card>
         <h2 className="mb-4 text-lg font-bold">{editingId ? t.updateSubscription : t.addSubscription}</h2>
         <form className="grid gap-3" onSubmit={submit}>
@@ -332,7 +390,7 @@ function SubscriptionsPage({ t }) {
           <FormField label={t.paymentMethod}><input className="input" value={form.paymentMethod} onChange={(event) => setForm({ ...form, paymentMethod: event.target.value })} /></FormField>
           <FormField label={t.description}><textarea className="input min-h-20" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} /></FormField>
           {formError && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{formError}</p>}
-          <div className="flex gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             <Button><Save size={16} />{t.save}</Button>
             {editingId && <Button type="button" variant="secondary" onClick={() => { setEditingId(null); setForm(emptySubscription); }}>{t.cancel}</Button>}
           </div>
@@ -358,16 +416,16 @@ function SubscriptionsPage({ t }) {
                 <h3 className="font-bold">{subscription.name}</h3>
                 <p className="text-sm text-gray-600">{subscription.category?.name ?? t.category} · {t[cycleLabels[subscription.billingCycle]]}</p>
               </div>
-              <div className="text-right">
-                <p className="font-bold">{subscription.price.toFixed(2)} €</p>
-                <p className="text-sm text-gray-600">{subscription.monthlyAmount.toFixed(2)} € / {t.perMonth}</p>
+              <div className="text-left sm:text-right">
+                <p className="font-bold">{subscription.price.toFixed(2)} EUR</p>
+                <p className="text-sm text-gray-600">{subscription.monthlyAmount.toFixed(2)} EUR / {t.perMonth}</p>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 grid gap-2 sm:flex sm:flex-wrap">
               <span className="badge">{t[statusLabels[subscription.status]]}</span>
               <span className="badge">{new Date(subscription.renewalDate).toLocaleDateString()}</span>
               <Button variant="secondary" onClick={() => edit(subscription)}>{t.updateSubscription}</Button>
-              <Button variant="danger" onClick={() => apiRequest(`/subscriptions/${subscription.id}`, { method: "DELETE" }).then(() => load())}>{t.archived}</Button>
+              <Button variant="danger" onClick={() => archive(subscription)}>{t.archived}</Button>
             </div>
           </Card>
         ))}
@@ -393,8 +451,8 @@ function StatisticsPage({ t }) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Metric title={t.totalMonthly} value={`${totalMonthlyAmount.toFixed(2)} €`} />
-      <Metric title={t.annualEstimate} value={`${totalAnnual.toFixed(2)} €`} />
+      <Metric title={t.totalMonthly} value={`${totalMonthlyAmount.toFixed(2)} EUR`} />
+      <Metric title={t.annualEstimate} value={`${totalAnnual.toFixed(2)} EUR`} />
       <Card>
         <h2 className="mb-3 text-lg font-bold">{t.byCategory}</h2>
         <Bars data={byCategory} emptyText={t.empty} />
@@ -405,7 +463,7 @@ function StatisticsPage({ t }) {
           {topCosts.length === 0 ? t.empty : topCosts.map((item) => (
             <div className="flex justify-between rounded-md bg-surface p-3" key={item.id}>
               <span>{item.name}</span>
-              <strong>{item.monthlyAmount.toFixed(2)} €</strong>
+              <strong>{item.monthlyAmount.toFixed(2)} EUR</strong>
             </div>
           ))}
         </div>
@@ -424,7 +482,7 @@ function Bars({ data, emptyText }) {
     <div className="grid gap-3">
       {entries.map(([label, value]) => (
         <div key={label}>
-          <div className="mb-1 flex justify-between text-sm"><span>{label}</span><strong>{value.toFixed(2)} €</strong></div>
+          <div className="mb-1 flex justify-between text-sm"><span>{label}</span><strong>{value.toFixed(2)} EUR</strong></div>
           <div className="h-3 rounded bg-gray-200"><div className="h-3 rounded bg-emerald-600" style={{ width: `${(value / max) * 100}%` }} /></div>
         </div>
       ))}
@@ -432,7 +490,7 @@ function Bars({ data, emptyText }) {
   );
 }
 
-function AdminPage({ t }) {
+function AdminPage({ t, notify }) {
   const [users, setUsers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "USER", isActive: true });
@@ -457,20 +515,42 @@ function AdminPage({ t }) {
   }, []);
 
   const updateUser = async (user, patch) => {
-    await apiRequest(`/admin/users/${user.id}`, { method: "PUT", body: patch });
-    load();
+    try {
+      await apiRequest(`/admin/users/${user.id}`, { method: "PUT", body: patch });
+      notify(t.userUpdated);
+      load();
+    } catch (err) {
+      setError(err.message);
+      notify(err.message, "error");
+    }
   };
 
   const createUser = async (event) => {
     event.preventDefault();
-    await apiRequest("/admin/users", { method: "POST", body: newUser });
-    setNewUser({ name: "", email: "", password: "", role: "USER", isActive: true });
-    load();
+    try {
+      await apiRequest("/admin/users", { method: "POST", body: newUser });
+      setNewUser({ name: "", email: "", password: "", role: "USER", isActive: true });
+      notify(t.userCreated);
+      load();
+    } catch (err) {
+      setError(err.message);
+      notify(err.message, "error");
+    }
   };
 
   const deleteUser = async (user) => {
-    await apiRequest(`/admin/users/${user.id}`, { method: "DELETE" });
-    load();
+    if (!window.confirm(t.confirmDeleteUser)) {
+      return;
+    }
+
+    try {
+      await apiRequest(`/admin/users/${user.id}`, { method: "DELETE" });
+      notify(t.userDeleted);
+      load();
+    } catch (err) {
+      setError(err.message);
+      notify(err.message, "error");
+    }
   };
 
   return (
@@ -490,8 +570,29 @@ function AdminPage({ t }) {
         </form>
       </Card>
       <Card>
-        <h2 className="mb-4 text-lg font-bold">{t.users}</h2>
-        <div className="overflow-x-auto">
+        <h2 className="mb-4 text-lg font-bold">{t.manageUsers}</h2>
+        <div className="grid gap-3 md:hidden">
+          {users.map((item) => (
+            <div className="rounded-md bg-surface p-3" key={item.id}>
+              <div className="mb-3">
+                <p className="font-bold">{item.name}</p>
+                <p className="break-all text-sm text-gray-600">{item.email}</p>
+                <p className="mt-1 text-sm text-gray-600">{t.subscriptionCount}: {item._count?.subscriptions ?? 0}</p>
+              </div>
+              <div className="grid gap-2">
+                <select className="input" value={item.role} onChange={(event) => updateUser(item, { role: event.target.value })}>
+                  <option value="USER">USER</option>
+                  <option value="ADMIN">ADMIN</option>
+                </select>
+                <Button variant="secondary" onClick={() => updateUser(item, { isActive: !item.isActive })}>
+                  {item.isActive ? t.disabled : t.enabled}
+                </Button>
+                <Button variant="danger" onClick={() => deleteUser(item)}>{t.delete}</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="hidden overflow-x-auto md:block">
           <table className="table">
             <thead><tr><th>{t.name}</th><th>{t.email}</th><th>{t.role}</th><th>{t.status}</th><th>{t.actions}</th></tr></thead>
             <tbody>
@@ -508,10 +609,10 @@ function AdminPage({ t }) {
                   <td>{item.isActive ? t.enabled : t.disabled}</td>
                   <td>
                     <div className="flex gap-2">
-                    <Button variant="secondary" onClick={() => updateUser(item, { isActive: !item.isActive })}>
-                      {item.isActive ? t.disabled : t.enabled}
-                    </Button>
-                    <Button variant="danger" onClick={() => deleteUser(item)}>{t.delete}</Button>
+                      <Button variant="secondary" onClick={() => updateUser(item, { isActive: !item.isActive })}>
+                        {item.isActive ? t.disabled : t.enabled}
+                      </Button>
+                      <Button variant="danger" onClick={() => deleteUser(item)}>{t.delete}</Button>
                     </div>
                   </td>
                 </tr>
@@ -521,12 +622,12 @@ function AdminPage({ t }) {
         </div>
       </Card>
       <Card>
-        <h2 className="mb-4 text-lg font-bold">{t.subscriptions}</h2>
+        <h2 className="mb-4 text-lg font-bold">{t.allSubscriptions}</h2>
         <div className="grid gap-2">
           {subscriptions.map((item) => (
             <div key={item.id} className="flex flex-wrap justify-between gap-3 rounded-md bg-surface p-3">
-              <span>{item.name} · {item.user?.email}</span>
-              <strong>{item.monthlyAmount.toFixed(2)} € / {t.perMonth}</strong>
+              <span>{item.name} - {item.user?.email}</span>
+              <strong>{item.monthlyAmount.toFixed(2)} EUR / {t.perMonth}</strong>
             </div>
           ))}
         </div>

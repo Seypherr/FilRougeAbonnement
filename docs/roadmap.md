@@ -2,9 +2,9 @@
 
 ## Avancement global
 
-Le projet est actuellement au stade **MVP technique fonctionnel**, estimé à environ **70%**.
+Le projet est actuellement au stade **MVP présentable**, estimé à environ **85%**.
 
-Le code principal est en place: backend Express/Prisma, frontend React minimal, authentification sécurisée, espace admin, CRUD abonnements, statistiques simples, tests et documentation. Le point restant le plus important avant validation complète est l'application réelle de la migration PostgreSQL après démarrage de Docker Desktop.
+Le code principal est en place: backend Express/Prisma, frontend React mobile-first simple, authentification sécurisée, espace admin, CRUD abonnements, statistiques, tests, captures et documentation de rendu. Le point restant le plus important est maintenant le déploiement en ligne.
 
 ## Tableau d'avancement
 
@@ -15,24 +15,24 @@ Le code principal est en place: backend Express/Prisma, frontend React minimal, 
 | 1 | Docker PostgreSQL | Prêt, Docker à démarrer | 90% | Haute | `npm run db:up` lance PostgreSQL localement |
 | 2 | Backend Express | Terminé pour MVP | 90% | Haute | API accessible sur `/api/health` |
 | 2 | Prisma schema | Terminé | 90% | Haute | Modèles `User`, `Subscription`, `Category` définis |
-| 2 | Migration Prisma | Créée côté code | 85% | Haute | Migration appliquée avec `npm run db:migrate` |
-| 2 | Seed admin | Créé côté code | 80% | Haute | Admin disponible après `npm run db:seed` |
+| 2 | Migration Prisma | Appliquée localement | 100% | Haute | Migration appliquée avec `npm run db:migrate` |
+| 2 | Seed admin | Appliqué localement | 100% | Haute | Admin disponible après `npm run db:seed` |
 | 3 | Auth cookie HTTP-only | Terminé | 90% | Haute | Register/login/logout/me fonctionnels |
 | 3 | Gestion rôles | Terminé pour MVP | 85% | Haute | `USER` refusé sur routes admin, `ADMIN` accepté |
 | 4 | CRUD abonnements | Terminé pour MVP | 85% | Haute | Ajout, modification, liste, archivage fonctionnels |
-| 4 | Recherche et filtre | Terminé pour MVP | 75% | Moyenne | Filtre statut + recherche texte côté API/frontend |
+| 4 | Recherche et filtre | Terminé | 85% | Moyenne | Filtre statut + recherche texte côté API/frontend |
 | 4 | Calcul mensualisé | Terminé | 100% | Haute | Mensuel, annuel et hebdomadaire testés |
-| 5 | Admin comptes | Terminé pour MVP | 80% | Haute | Liste, création, rôle, activation/désactivation, suppression |
-| 5 | Admin abonnements | Terminé pour MVP | 70% | Moyenne | Consultation globale des abonnements |
-| 6 | Frontend React minimal | Terminé | 75% | Haute | Pages principales accessibles |
+| 5 | Admin comptes | Terminé pour MVP | 90% | Haute | Liste, création, rôle, activation/désactivation, suppression |
+| 5 | Admin abonnements | Terminé pour MVP | 80% | Moyenne | Consultation globale des abonnements |
+| 6 | Frontend React minimal | Terminé et amélioré mobile | 85% | Haute | Pages principales accessibles |
 | 6 | Bilingue FR/EN | Terminé pour MVP | 75% | Moyenne | Switch FR/EN et dictionnaires alignés |
-| 6 | Dashboard statistiques | Terminé simple | 65% | Moyenne | Total mensuel, annuel estimé, catégories, top coûts |
-| 7 | Tests backend | Terminé pour MVP | 75% | Haute | Tests auth, admin, isolation utilisateur OK |
-| 7 | Tests frontend | Minimal | 30% | Moyenne | Test alignement dictionnaires OK |
-| 8 | UI mobile-first avancée | À améliorer | 35% | Haute | Interface testée mobile + desktop |
-| 9 | Documentation finale | En cours | 55% | Haute | README, MCD/MLD, justification technique finalisés |
+| 6 | Dashboard statistiques | Terminé pour MVP | 85% | Moyenne | Total mensuel, annuel estimé, catégories, top coûts |
+| 7 | Tests backend | Renforcé | 85% | Haute | Tests auth, admin, isolation utilisateur OK |
+| 7 | Tests frontend | Ajoutés | 70% | Moyenne | Login, langue, dashboard et formulaire testés |
+| 8 | UI mobile-first avancée | Améliorée pour démo | 75% | Haute | Interface testée mobile + desktop |
+| 9 | Documentation finale | En cours avancé | 80% | Haute | README, MCD/MLD, justification technique finalisés |
 | 10 | Déploiement | À faire | 0% | Haute | Frontend + backend + DB disponibles en ligne |
-| 11 | Présentation orale | À faire | 10% | Haute | Démo + support + réponses préparées |
+| 11 | Présentation orale | Scénario prêt | 65% | Haute | Démo + support + réponses préparées |
 
 ## Plan pour la suite
 
@@ -45,6 +45,7 @@ Commandes:
 ```bash
 npm run db:up
 npm run db:migrate
+npm run db:generate
 npm run db:seed
 ```
 
@@ -139,14 +140,21 @@ Plan recommandé:
 - CORS limité au domaine frontend
 - cookies configurés en `secure` et `sameSite=none`
 
+## Captures disponibles
+
+Les captures de validation navigateur sont dans `docs/screenshots`:
+
+- `01-login-mobile.png`
+- `02-subscriptions-mobile.png`
+- `03-dashboard-mobile.png`
+- `04-statistics-mobile.png`
+- `05-admin-mobile.png`
+
 ## Objectif final
 
 Pour atteindre **100%**, il reste principalement:
 
-- appliquer réellement la DB Docker
-- tester les parcours complets
-- améliorer l'UX mobile-first
-- renforcer les tests
-- finaliser les documents de conception
+- compléter les derniers tests si le temps le permet
+- finaliser les captures desktop si nécessaire
 - déployer l'application
 - préparer la présentation orale

@@ -8,32 +8,44 @@
 
 ## MCD simplifié
 
-```txt
-USER (0,n) possede SUBSCRIPTION
-CATEGORY (0,n) classe SUBSCRIPTION
+```mermaid
+erDiagram
+  USER ||--o{ SUBSCRIPTION : possede
+  CATEGORY ||--o{ SUBSCRIPTION : classe
 
-USER
-- id
-- name
-- email
-- password
-- role
-- isActive
+  USER {
+    string id PK
+    string name
+    string email UK
+    string password
+    string role
+    boolean is_active
+    datetime created_at
+    datetime updated_at
+  }
 
-SUBSCRIPTION
-- id
-- name
-- description
-- price
-- billingCycle
-- renewalDate
-- status
-- paymentMethod
+  CATEGORY {
+    string id PK
+    string name UK
+    string color
+    datetime created_at
+    datetime updated_at
+  }
 
-CATEGORY
-- id
-- name
-- color
+  SUBSCRIPTION {
+    string id PK
+    string name
+    string description
+    decimal price
+    string billing_cycle
+    datetime renewal_date
+    string status
+    string payment_method
+    string user_id FK
+    string category_id FK
+    datetime created_at
+    datetime updated_at
+  }
 ```
 
 ## MLD simplifié
@@ -81,6 +93,27 @@ subscriptions(
 - Les routes privées passent par un middleware d'authentification.
 - Les routes admin passent par un middleware de rôle.
 - Les utilisateurs ne peuvent accéder qu'à leurs propres abonnements.
+
+## Architecture MVC
+
+```mermaid
+flowchart LR
+  Browser["React / Vite"] --> Api["Express API"]
+  Api --> Controllers["Controllers"]
+  Controllers --> Services["Services"]
+  Services --> Prisma["Prisma ORM"]
+  Prisma --> Database["PostgreSQL Docker"]
+  Api --> Middlewares["Auth, validation, errors"]
+```
+
+## Choix techniques
+
+- React/Vite: frontend léger, rapide à développer et adapté à une interface dynamique.
+- Tailwind CSS: permet une UI responsive rapidement sans dépendre d'un kit graphique lourd.
+- Express: framework simple et robuste pour exposer une API REST.
+- Prisma: ORM lisible, migrations versionnées, typage des modèles et requêtes plus sûres.
+- PostgreSQL: base relationnelle adaptée aux relations `users`, `subscriptions`, `categories`.
+- JWT cookie HTTP-only: évite de manipuler le token en JavaScript côté navigateur.
 
 ## Bonus possibles
 
