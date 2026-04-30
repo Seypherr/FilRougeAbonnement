@@ -1,67 +1,172 @@
-import { Archive, CalendarDays, CheckCircle2, Plus, WalletCards } from "lucide-react";
-import { Button } from "../components/Button.jsx";
-import { Card } from "../components/Card.jsx";
-import { MetricCard } from "../components/MetricCard.jsx";
 import { formatMoney, getSubscriptionStats } from "../utils/subscriptions.js";
+
+function getDueLabel(dateValue) {
+  const today = new Date();
+  const due = new Date(dateValue);
+  const diff = Math.ceil((due.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / 86400000);
+  if (diff <= 1) return { text: "Tomorrow", urgent: true };
+  return { text: `In ${diff} days`, urgent: false };
+}
+
+function getServiceStyle(index) {
+  const styles = [
+    { icon: "ph-film-strip", iconColor: "text-rose-500", bgColor: "bg-rose-50" },
+    { icon: "ph-music-notes", iconColor: "text-emerald-500", bgColor: "bg-emerald-50" },
+    { icon: "ph-pen-nib", iconColor: "text-blue-500", bgColor: "bg-blue-50" },
+    { icon: "ph-figma-logo", iconColor: "text-fuchsia-500", bgColor: "bg-fuchsia-50" },
+    { icon: "ph-credit-card", iconColor: "text-violet-500", bgColor: "bg-violet-50" }
+  ];
+  return styles[index % styles.length];
+}
+
+function RenewalCard({ item, index, desktop = false }) {
+  const style = getServiceStyle(index);
+  const due = getDueLabel(item.renewalDate);
+  return (
+    <div className={`flex items-center gap-4 bg-white transition-all ${desktop ? "rounded-[20px] px-6 py-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]" : "rounded-[20px] p-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]"}`}>
+      <div className={`${desktop ? "size-10" : "size-[52px]"} flex shrink-0 items-center justify-center rounded-full ${style.bgColor}`}>
+        <i className={`ph-fill ${style.icon} ${desktop ? "text-xl" : "text-2xl"} ${style.iconColor}`} />
+      </div>
+      <div className="flex-1">
+        <h3 className="text-[15px] font-bold leading-tight text-slate-800">{item.name}</h3>
+        <p className="mt-0.5 text-[13px] font-medium text-slate-500">{item.category?.name ?? "Student Plan"}</p>
+      </div>
+      <div className="flex flex-col items-end gap-1 text-right">
+        {desktop ? (
+          <span className={`text-xs ${due.urgent ? "rounded-md bg-rose-100 px-2 py-1 font-bold uppercase tracking-widest text-rose-600" : "font-medium text-slate-400"}`}>{due.text}</span>
+        ) : (
+          <>
+            <span className="text-[15px] font-bold leading-tight text-slate-800">{formatMoney(item.price)}</span>
+            <span className={`mt-0.5 ${due.urgent ? "rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold uppercase tracking-widest leading-none text-rose-600" : "text-[12px] font-medium text-slate-400"}`}>{due.text}</span>
+          </>
+        )}
+        {desktop && <span className="text-[15px] font-bold text-slate-800">{formatMoney(item.price)}</span>}
+      </div>
+    </div>
+  );
+}
 
 export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, setTab, onAddSubscription }) {
   const stats = getSubscriptionStats(subscriptions, totalMonthlyAmount);
+  const renewals = stats.upcomingRenewals.slice(0, 5);
 
   return (
-    <div className="grid gap-5">
-      <section className="overflow-hidden rounded-[2rem] bg-violet-600 p-7 text-white shadow-2xl shadow-violet-200">
-        <p className="text-center text-sm font-black text-violet-100">{t.totalMonthly}</p>
-        <p className="mt-2 text-center text-5xl font-black tracking-normal">{loading ? "..." : formatMoney(totalMonthlyAmount)}</p>
-        <div className="mx-auto mt-5 w-fit rounded-2xl bg-white/15 px-4 py-2 text-sm font-extrabold text-violet-50">
-          {t.estimatedYearly}: {formatMoney(stats.totalYearly)}
-        </div>
-      </section>
+    <>
+      <div className="relative min-h-screen overflow-x-hidden bg-[#F8F9FB] pb-32 lg:hidden">
+        <div className="absolute left-0 top-0 z-0 h-[360px] w-full rounded-b-[48px] bg-[linear-gradient(145deg,#6C51FF_0%,#9542FF_100%)]" />
+        <main className="relative z-10 flex min-h-screen flex-col">
+          <header className="relative z-20 flex items-center justify-between px-6 pb-6 pt-12">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-white/70">Welcome back,</span>
+              <h1 className="text-xl font-bold tracking-tight text-white">Alex Student</h1>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="relative flex size-11 items-center justify-center rounded-[14px] border border-white/30 bg-transparent text-white transition-colors hover:bg-white/10">
+                <i className="ph ph-bell text-xl" />
+                <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-rose-500" />
+              </button>
+              <div className="flex size-11 items-center justify-center overflow-hidden rounded-[14px] border border-white/30 bg-transparent text-sm font-bold text-white shadow-sm">
+                <img src="https://ui-avatars.com/api/?name=Alex+Student&background=E0E7FF&color=4338CA&bold=true" alt="Profile" className="size-full object-cover" />
+              </div>
+            </div>
+          </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <MetricCard title={t.activeSubscriptions} value={stats.active.length} icon={CheckCircle2} compact />
-        <MetricCard title={t.archived} value={stats.archived.length} icon={Archive} compact />
-        <MetricCard title={t.estimatedYearly} value={formatMoney(stats.totalYearly)} icon={WalletCards} compact />
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
-        <Card>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-xl font-black">{t.nextRenewals}</h2>
-            <Button variant="ghost" onClick={() => setTab("subscriptions")}>{t.all}</Button>
-          </div>
-          <div className="grid gap-3">
-            {stats.upcomingRenewals.length === 0 ? (
-              <p className="text-sm font-semibold text-slate-500">{t.noRenewals}</p>
-            ) : (
-              stats.upcomingRenewals.map((item) => (
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4" key={item.id}>
-                  <div className="flex items-center gap-3">
-                    <div className="grid size-11 place-items-center rounded-2xl bg-violet-100 text-violet-700">
-                      <CalendarDays size={18} />
-                    </div>
-                    <div>
-                      <p className="font-black">{item.name}</p>
-                      <p className="text-sm font-semibold text-slate-500">{item.category?.name ?? t.category}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black">{formatMoney(item.monthlyAmount)}</p>
-                    <p className="text-xs font-semibold text-slate-400">{new Date(item.renewalDate).toLocaleDateString()}</p>
-                  </div>
+          <section className="relative z-10 px-6">
+            <div className="flex w-full flex-col items-center pb-8 pt-2 text-white">
+              <span className="text-[13px] font-medium text-white/80">Monthly Spending</span>
+              <div className="mt-4 flex items-baseline justify-center gap-1">
+                <span className="text-4xl font-semibold text-white/70">$</span>
+                <span className="text-[64px] font-bold leading-none tracking-tight text-white">{Number(totalMonthlyAmount || 0).toFixed(2)}</span>
+              </div>
+              <div className="mt-6 flex justify-center">
+                <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/15 px-4 py-2 backdrop-blur-md">
+                  <i className="ph-fill ph-calendar-blank text-sm text-white/80" />
+                  <span className="text-xs font-medium text-white/80">Yearly Est.</span>
+                  <span className="text-xs font-bold text-white">{formatMoney(stats.totalYearly)}</span>
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
+              </div>
+            </div>
 
-        <Card className="grid content-between gap-5">
-          <div>
-            <h2 className="text-xl font-black">{t.subscriptions}</h2>
-            <p className="mt-2 text-sm font-semibold text-slate-500">{subscriptions.slice(0, 4).map((item) => item.name).join(", ") || t.empty}</p>
-          </div>
-          <Button className="min-h-14 rounded-2xl" onClick={onAddSubscription}><Plus size={18} />{t.addSubscription}</Button>
-        </Card>
+            <div className="-mt-2 flex gap-4">
+              <div className="flex flex-1 items-center gap-4 rounded-[24px] bg-white p-4 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.06)]">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+                  <i className="ph-fill ph-check-circle text-[22px] text-emerald-500" />
+                </div>
+                <div className="flex flex-col-reverse items-start">
+                  <span className="mt-1 text-[26px] font-bold leading-none text-slate-800">{stats.active.length}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Active</span>
+                </div>
+              </div>
+              <div className="flex flex-1 items-center gap-4 rounded-[24px] bg-white p-4 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.06)]">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                  <i className="ph-fill ph-archive-box text-[22px] text-slate-500" />
+                </div>
+                <div className="flex flex-col-reverse items-start">
+                  <span className="mt-1 text-[26px] font-bold leading-none text-slate-800">{stats.archived.length}</span>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Archived</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="relative z-20 mt-8 flex flex-1 flex-col px-6">
+            <div className="mb-5 flex items-center justify-between px-1">
+              <h2 className="text-[18px] font-bold text-slate-800">Upcoming Renewals</h2>
+              <button onClick={() => setTab("subscriptions")} className="rounded-lg bg-[#6C51FF]/10 px-3 py-1.5 text-[13px] font-semibold text-[#6C51FF] transition-colors hover:bg-[#6C51FF]/20">
+                See all
+              </button>
+            </div>
+            <div className="flex flex-col gap-3.5">
+              {loading ? <p className="text-sm font-semibold text-slate-400">Loading...</p> : renewals.length === 0 ? <p className="text-sm font-semibold text-slate-400">{t.noRenewals}</p> : renewals.map((item, index) => <RenewalCard key={item.id} item={item} index={index} />)}
+            </div>
+          </section>
+        </main>
       </div>
-    </div>
+
+      <div className="hidden lg:block">
+        <div className="grid gap-6 xl:grid-cols-[1fr_180px_180px]">
+          <section className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(145deg,#7B42FF_0%,#6C51FF_100%)] p-8 text-white shadow-[0_14px_34px_-16px_rgba(123,66,255,0.65)]">
+            <div className="absolute left-1/4 top-1/2 size-24 rounded-full bg-white/5" />
+            <div className="absolute bottom-0 right-24 size-32 rounded-full bg-white/5" />
+            <div className="relative z-10 text-center">
+              <p className="text-sm font-medium tracking-wide text-white/90">Monthly Total</p>
+              <div className="mt-1 flex items-baseline justify-center gap-1">
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(totalMonthlyAmount).replace("$", "$")}</span>
+              </div>
+              <p className="mt-2 text-sm font-medium text-white/70">Due next 7 days: {formatMoney(renewals.slice(0, 2).reduce((sum, item) => sum + Number(item.monthlyAmount ?? 0), 0))}</p>
+            </div>
+          </section>
+          <section className="flex flex-col justify-between rounded-[24px] bg-[linear-gradient(145deg,#7B42FF_0%,#6C51FF_100%)] p-6 text-white shadow-[0_14px_34px_-18px_rgba(123,66,255,0.65)]">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-white/15">
+              <i className="ph-fill ph-calendar-blank text-xl" />
+            </div>
+            <div>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-white/80">Estimated Yearly</p>
+              <p className="text-3xl font-bold">{formatMoney(stats.totalYearly)}</p>
+            </div>
+          </section>
+          <section className="flex flex-col gap-4">
+            <div className="flex flex-1 items-center justify-between rounded-[24px] bg-white p-6 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.08)]">
+              <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Active</p><p className="mt-2 text-3xl font-bold text-slate-800">{stats.active.length}</p></div>
+              <div className="flex size-12 items-center justify-center rounded-full bg-emerald-50"><i className="ph-fill ph-check-circle text-xl text-emerald-500" /></div>
+            </div>
+            <div className="flex flex-1 items-center justify-between rounded-[24px] bg-white p-6 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.08)]">
+              <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Archived</p><p className="mt-2 text-3xl font-bold text-slate-800">{stats.archived.length}</p></div>
+              <div className="flex size-12 items-center justify-center rounded-full bg-slate-100"><i className="ph-fill ph-archive-box text-xl text-slate-500" /></div>
+            </div>
+          </section>
+        </div>
+
+        <section className="mt-8">
+          <div className="mb-5 flex items-center justify-between px-1">
+            <h2 className="text-[18px] font-bold text-slate-900">Upcoming Renewals</h2>
+            <button onClick={() => setTab("subscriptions")} className="rounded-lg bg-[#F4F0FF] px-3.5 py-1.5 text-[13px] font-bold text-[#7B42FF] transition-colors hover:bg-[#EAE0FF]">View All</button>
+          </div>
+          <div className="flex flex-col gap-3">
+            {renewals.length === 0 ? <p className="rounded-[20px] bg-white p-6 text-sm font-semibold text-slate-400">{t.noRenewals}</p> : renewals.map((item, index) => <RenewalCard key={item.id} item={item} index={index} desktop />)}
+          </div>
+        </section>
+      </div>
+    </>
   );
 }

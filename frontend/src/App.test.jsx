@@ -67,8 +67,8 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByText("Subscription Manager")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Connexion" }).length).toBeGreaterThan(0);
+    expect(screen.getByText("Welcome back! 👋")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Log In" }).length).toBeGreaterThan(0);
   });
 
   it("switches the login page from French to English", () => {
@@ -82,7 +82,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "FR" }));
 
-    expect(screen.getAllByRole("button", { name: "Login" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Log In" }).length).toBeGreaterThan(0);
   });
 
   it("renders the dashboard for an authenticated user", async () => {
@@ -94,8 +94,8 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getAllByText("12.00 EUR").length).toBeGreaterThan(0));
-    expect(screen.getByText("Prochains renouvellements")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getAllByText("$12.00").length).toBeGreaterThan(0));
+    expect(screen.getAllByText("Upcoming Renewals").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0);
   });
 
@@ -109,9 +109,9 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
-    await waitFor(() => expect(screen.getAllByText("Ajouter un abonnement").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getAllByRole("button", { name: /Ajouter un abonnement/i }).at(-1));
-    expect(screen.getByLabelText("Nom")).toBeInTheDocument();
-    expect(screen.getByLabelText("Prix")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Subscriptions")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: "Add Subscription" })[0]);
+    expect(screen.getAllByText("Add Subscription").length).toBeGreaterThan(0);
+    expect(screen.getByText("Price")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { BarChart3, CreditCard, Grid2X2, Home, Languages, LogOut, Plus, Shield, UserRound } from "lucide-react";
+import { BarChart3, CreditCard, Grid2X2, Home, Languages, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
 import { Button } from "./Button.jsx";
 import { Toast } from "./Toast.jsx";
 
@@ -10,12 +10,20 @@ const navIconMap = {
 };
 
 export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, navItems, toast, children, onAddSubscription }) {
+  const mobileItems = [
+    ["dashboard", Home],
+    ["subscriptions", Grid2X2],
+    ["add", Plus],
+    ["statistics", PieChart],
+    [user.role === "ADMIN" ? "admin" : "dashboard", user.role === "ADMIN" ? Shield : UserRound]
+  ];
+
   return (
-    <main className="min-h-screen bg-[#F6F7FB] text-slate-950 lg:grid lg:grid-cols-[280px_1fr]">
-      <aside className="hidden min-h-screen border-r border-slate-100 bg-white p-8 lg:flex lg:flex-col">
+    <main className="min-h-screen bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[280px_1fr] lg:p-6">
+      <aside className="hidden min-h-[calc(100vh-48px)] rounded-l-[32px] border-r border-slate-100 bg-white p-8 lg:flex lg:flex-col">
         <div>
           <div className="mb-10 flex items-center gap-3">
-            <div className="grid size-12 place-items-center rounded-2xl bg-violet-600 text-white shadow-lg shadow-violet-200">
+            <div className="grid size-12 place-items-center rounded-2xl bg-[#7B42FF] text-white shadow-[0_8px_24px_-8px_rgba(123,66,255,0.55)]">
               <CreditCard size={24} />
             </div>
             <div>
@@ -26,12 +34,12 @@ export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, 
 
           <nav className="grid gap-2">
             {navItems.map(([id, label]) => {
-              const Icon = navIconMap[id];
+              const Icon = id === "subscriptions" ? List : navIconMap[id];
               const active = tab === id;
               return (
                 <button
                   key={id}
-                  className={`flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm font-extrabold transition ${active ? "bg-violet-50 text-violet-700" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
+                  className={`flex min-h-12 items-center gap-3 rounded-2xl px-4 text-sm font-bold transition ${active ? "bg-[#F4F0FF] text-[#7B42FF]" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
                   onClick={() => setTab(id)}
                 >
                   <Icon size={18} />
@@ -43,13 +51,19 @@ export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, 
         </div>
 
         <div className="mt-auto grid gap-5">
-          <div className="rounded-3xl bg-violet-600 p-5 text-white shadow-lg shadow-violet-100">
+          <div className="overflow-hidden rounded-3xl bg-[#7B42FF] p-5 text-white shadow-lg shadow-violet-100">
             <p className="text-sm font-black">Demo ready</p>
-            <p className="mt-2 text-xs font-semibold text-violet-100">Payment Methods and Settings are future features.</p>
+            <p className="mt-2 text-xs font-semibold leading-relaxed text-violet-100">Future features.</p>
           </div>
-          <Button onClick={onAddSubscription}><Plus size={18} />{t.addSubscription}</Button>
+          <button
+            onClick={onAddSubscription}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.98]"
+          >
+            <Plus size={18} />
+            Add New
+          </button>
           <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
-            <div className="grid size-10 place-items-center rounded-full bg-violet-100 text-sm font-black text-violet-700">{user.name?.[0] ?? "U"}</div>
+            <div className="grid size-10 place-items-center rounded-full bg-[#F4F0FF] text-sm font-black text-[#7B42FF]">{user.name?.[0] ?? "U"}</div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{user.name}</p>
               <p className="truncate text-xs font-semibold text-slate-500">{user.email}</p>
@@ -58,8 +72,8 @@ export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, 
         </div>
       </aside>
 
-      <section className="min-w-0 pb-24 lg:pb-0">
-        <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-4 py-4 backdrop-blur lg:px-8">
+      <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-48px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0">
+        <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-4 py-4 backdrop-blur lg:hidden">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-black tracking-tight lg:text-2xl">{navItems.find(([id]) => id === tab)?.[1] ?? t.dashboard}</h1>
@@ -81,24 +95,36 @@ export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, 
           </div>
         </header>
 
-        <div className="mx-auto max-w-7xl p-4 lg:p-8">{children}</div>
+        <div className="mx-auto max-w-7xl lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8">{children}</div>
       </section>
 
-      <nav className="fixed bottom-4 left-4 right-4 z-30 grid gap-2 rounded-3xl bg-white p-2 shadow-2xl shadow-slate-300/60 lg:hidden" style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}>
-        {navItems.map(([id, label]) => {
-          const Icon = navIconMap[id];
+      <nav className="fixed bottom-6 left-0 z-30 w-full px-6 pointer-events-none lg:hidden">
+        <div className="flex items-center justify-between rounded-[32px] border border-slate-100/60 bg-white/95 p-2 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.08)] backdrop-blur-xl pointer-events-auto">
+        {mobileItems.map(([id, Icon], index) => {
           const active = tab === id;
+          const isAdd = id === "add";
+          const label = isAdd ? "Add Subscription" : navItems.find(([navId]) => navId === id)?.[1] ?? id;
           return (
             <button
-              key={id}
-              className={`grid min-h-14 place-items-center rounded-2xl text-xs font-black transition ${active ? "bg-violet-600 text-white" : "text-slate-400"}`}
-              onClick={() => setTab(id)}
+              key={`${id}-${index}`}
+              aria-label={label}
+              className={`${isAdd ? "relative -top-6 flex-1" : "flex-1"} grid min-h-14 place-items-center text-xs font-black transition ${active ? "text-[#6C51FF]" : "text-slate-400 hover:text-[#6C51FF]"}`}
+              onClick={() => (isAdd ? onAddSubscription() : setTab(id))}
             >
-              <Icon size={20} />
-              <span className="sr-only">{label}</span>
+              {isAdd ? (
+                <span className="grid size-14 place-items-center rounded-full border-4 border-white bg-[#6C51FF] text-white shadow-[0_8px_20px_-6px_rgba(108,81,255,0.4)]">
+                  <Icon size={25} />
+                </span>
+              ) : (
+                <span className="grid gap-1 place-items-center">
+                  <Icon size={24} fill={active ? "currentColor" : "none"} />
+                  <span className={`size-1.5 rounded-full ${active ? "bg-[#6C51FF]" : "bg-transparent"}`} />
+                </span>
+              )}
             </button>
           );
         })}
+        </div>
       </nav>
 
       <Toast toast={toast} />
