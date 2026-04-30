@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+  WEEKLY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(USER)
+  isActive      Boolean        @default(true) @map("is_active")
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Category {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  color         String         @default("#2563eb")
+  subscriptions Subscription[]
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+model Subscription {
+  id            String             @id @default(uuid())
+  name          String
+  description   String?
+  price         Decimal            @db.Decimal(10, 2)
+  billingCycle  BillingCycle       @map("billing_cycle")
+  renewalDate   DateTime           @map("renewal_date")
+  status        SubscriptionStatus @default(ACTIVE)
+  paymentMethod String?            @map("payment_method")
+  userId        String             @map("user_id")
+  categoryId    String?            @map("category_id")
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([categoryId])
+  @@map("subscriptions")
+}
