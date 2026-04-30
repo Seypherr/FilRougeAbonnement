@@ -130,3 +130,5 @@ Voir aussi [docs/roadmap.md](docs/roadmap.md).
 Déploiement: [docs/deployment.md](docs/deployment.md).
 
 Scénario de démonstration: [docs/demo-script.md](docs/demo-script.md).
+
+Prompts design: [docs/design-prompts.md](docs/design-prompts.md).
