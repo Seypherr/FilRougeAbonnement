@@ -25,6 +25,7 @@ Le code principal est en place: backend Express/Prisma, frontend React mobile-fi
 | 5 | Admin comptes | Terminé pour MVP | 90% | Haute | Liste, création, rôle, activation/désactivation, suppression |
 | 5 | Admin abonnements | Terminé pour MVP | 80% | Moyenne | Consultation globale des abonnements |
 | 6 | Frontend React minimal | Terminé et amélioré mobile | 85% | Haute | Pages principales accessibles |
+| 6 | Intégration des maquettes | Terminée pour les pages principales | 90% | Haute | Auth, dashboard, abonnements, analytics et admin alignés avec `design/` |
 | 6 | Bilingue FR/EN | Terminé pour MVP | 75% | Moyenne | Switch FR/EN et dictionnaires alignés |
 | 6 | Dashboard statistiques | Terminé pour MVP | 85% | Moyenne | Total mensuel, annuel estimé, catégories, top coûts |
 | 7 | Tests backend | Renforcé | 85% | Haute | Tests auth, admin, isolation utilisateur OK |
@@ -149,6 +150,12 @@ Les captures de validation navigateur sont dans `docs/screenshots`:
 - `03-dashboard-mobile.png`
 - `04-statistics-mobile.png`
 - `05-admin-mobile.png`
+- `design-mobile-subscriptions.png`
+- `design-mobile-dashboard.png`
+- `design-mobile-analytics.png`
+- `design-desktop-subscriptions.png`
+- `design-desktop-dashboard.png`
+- `design-desktop-analytics.png`
 
 ## Objectif final
 

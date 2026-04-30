@@ -67,7 +67,7 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Subscription Manager" })).toBeInTheDocument();
+    expect(screen.getByText("Subscription Manager")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Connexion" }).length).toBeGreaterThan(0);
   });
 
@@ -94,7 +94,7 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByText("12.00 EUR")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("12.00 EUR").length).toBeGreaterThan(0));
     expect(screen.getByText("Prochains renouvellements")).toBeInTheDocument();
     expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0);
   });
@@ -107,9 +107,10 @@ describe("App", () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: /Abonnements/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
-    await waitFor(() => expect(screen.getByText("Ajouter un abonnement")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText("Ajouter un abonnement").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getAllByRole("button", { name: /Ajouter un abonnement/i }).at(-1));
     expect(screen.getByLabelText("Nom")).toBeInTheDocument();
     expect(screen.getByLabelText("Prix")).toBeInTheDocument();
   });

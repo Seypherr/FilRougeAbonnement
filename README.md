@@ -119,7 +119,7 @@ Les tests couvrent le calcul mensualisé, l'authentification, les cookies HTTP-o
 
 ## Captures
 
-Les captures mobiles utilisées pour la validation et le rendu sont disponibles dans `docs/screenshots`.
+Les captures mobiles et desktop utilisées pour la validation et le rendu sont disponibles dans `docs/screenshots`.
 
 ## Documentation de conception
 
@@ -132,3 +132,5 @@ Déploiement: [docs/deployment.md](docs/deployment.md).
 Scénario de démonstration: [docs/demo-script.md](docs/demo-script.md).
 
 Prompts design: [docs/design-prompts.md](docs/design-prompts.md).
+
+Intégration des designs: [docs/design-integration.md](docs/design-integration.md).

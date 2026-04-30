@@ -1,3 +1,3 @@
 export function Card({ children, className = "" }) {
-  return <section className={`rounded-md border border-line bg-white p-4 shadow-sm ${className}`}>{children}</section>;
+  return <section className={`rounded-2xl border border-slate-100 bg-white p-5 shadow-sm ${className}`}>{children}</section>;
 }
