@@ -51,7 +51,7 @@ npm run db:seed
 Validation:
 
 - Docker Desktop est démarré.
-- PostgreSQL écoute sur le port `5432`.
+- PostgreSQL écoute localement sur le port `15432`.
 - La migration Prisma est appliquée.
 - Le compte admin existe.
 - Le backend démarre sans erreur de connexion DB.

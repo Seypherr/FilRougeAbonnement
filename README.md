@@ -27,6 +27,8 @@ API: `http://localhost:4000`
 
 Frontend: `http://localhost:5173`
 
+PostgreSQL local: `localhost:15432` vers le port conteneur `5432`.
+
 ## Compte admin de développement
 
 Le seed crée un admin avec les valeurs de `backend/.env`.
