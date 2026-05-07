@@ -1,5 +1,4 @@
-import { BarChart3, CreditCard, Grid2X2, Home, Languages, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
-import { Button } from "./Button.jsx";
+import { BarChart3, CreditCard, Grid2X2, Home, List, PieChart, Plus, Shield, UserRound } from "lucide-react";
 import { Toast } from "./Toast.jsx";
 
 const navIconMap = {
@@ -9,7 +8,7 @@ const navIconMap = {
   admin: Shield
 };
 
-export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, navItems, toast, children, onAddSubscription }) {
+export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAddSubscription }) {
   const mobileItems = [
     ["dashboard", Home],
     ["subscriptions", Grid2X2],
@@ -73,28 +72,6 @@ export function AppShell({ t, language, setLanguage, user, logout, tab, setTab, 
       </aside>
 
       <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-48px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0">
-        <header className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 px-4 py-4 backdrop-blur lg:hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-black tracking-tight lg:text-2xl">{navItems.find(([id]) => id === tab)?.[1] ?? t.dashboard}</h1>
-              <p className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-                <UserRound size={16} />
-                {user.name} - {user.role}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" className="px-3" onClick={() => setLanguage(language === "fr" ? "en" : "fr")}>
-                <Languages size={16} />
-                {language.toUpperCase()}
-              </Button>
-              <Button variant="secondary" className="px-3" onClick={logout}>
-                <LogOut size={16} />
-                <span className="hidden sm:inline">{t.logout}</span>
-              </Button>
-            </div>
-          </div>
-        </header>
-
         <div className="mx-auto max-w-7xl lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8">{children}</div>
       </section>
 
