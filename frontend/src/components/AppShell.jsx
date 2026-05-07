@@ -72,7 +72,11 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
       </aside>
 
       <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-48px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0">
-        <div className="mx-auto max-w-7xl lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8">{children}</div>
+        <div className="mx-auto max-w-7xl lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8">
+          <div key={tab} className="page-transition">
+            {children}
+          </div>
+        </div>
       </section>
 
       <nav className="fixed bottom-6 left-0 z-30 w-full px-6 pointer-events-none lg:hidden">

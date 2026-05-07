@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { AppShell } from "./components/AppShell.jsx";
 import { SubscriptionModal } from "./components/SubscriptionModal.jsx";
 import { apiRequest } from "./api/client.js";
@@ -23,6 +24,21 @@ export function App() {
   const notify = (message, type = "success") => {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 2800);
+  };
+
+  const navigateTab = (nextTab) => {
+    if (nextTab === tab) {
+      return;
+    }
+
+    if (document.startViewTransition) {
+      document.startViewTransition(() => {
+        flushSync(() => setTab(nextTab));
+      });
+      return;
+    }
+
+    setTab(nextTab);
   };
 
   if (loading) {
@@ -59,7 +75,7 @@ export function App() {
       user={user}
       logout={logout}
       tab={tab}
-      setTab={setTab}
+      setTab={navigateTab}
       navItems={navItems}
       toast={toast}
       onAddSubscription={openAddSubscription}
@@ -70,7 +86,7 @@ export function App() {
           subscriptions={subscriptionState.subscriptions}
           totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
           loading={subscriptionState.loading}
-          setTab={setTab}
+          setTab={navigateTab}
           onAddSubscription={openAddSubscription}
         />
       )}

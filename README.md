@@ -21,6 +21,7 @@ npm run db:up
 npm run db:migrate
 npm run db:generate
 npm run db:seed
+npm run db:demo
 npm run dev
 ```
 
@@ -41,6 +42,19 @@ Par défaut:
 - Email: `admin@subscription.local`
 - Mot de passe: `Admin123!`
 
+## Données de démonstration
+
+Le script `npm run db:demo` ajoute des utilisateurs et abonnements fictifs pour tester l'interface.
+
+Comptes utiles:
+
+- `alex.student@demo.local`
+- `jamie.doe@demo.local`
+- `louis.delarue@demo.local`
+- `ethan.porcarro@demo.local`
+
+Mot de passe commun: `Demo123!`
+
 ## Scripts utiles
 
 ```bash
@@ -52,6 +66,7 @@ npm run db:down
 npm run db:migrate
 npm run db:generate
 npm run db:seed
+npm run db:demo
 ```
 
 ## Variables d'environnement
