@@ -137,6 +137,35 @@ describe("subscription API", () => {
     );
   });
 
+  it("applies search and status filters when listing subscriptions", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findMany.mockResolvedValueOnce([subscription]);
+
+    await agent.get("/api/subscriptions?search=netflix&status=ACTIVE").expect(200);
+
+    expect(mockPrisma.subscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: user.id,
+          status: "ACTIVE",
+          OR: [
+            { name: { contains: "netflix", mode: "insensitive" } },
+            { description: { contains: "netflix", mode: "insensitive" } }
+          ]
+        })
+      })
+    );
+  });
+
   it("creates a subscription for the authenticated user", async () => {
     const agent = request.agent(app);
     mockPrisma.user.findUnique.mockResolvedValueOnce(null);
@@ -166,6 +195,32 @@ describe("subscription API", () => {
         data: expect.objectContaining({ userId: user.id })
       })
     );
+  });
+
+  it("rejects invalid subscription creation", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    const response = await agent
+      .post("/api/subscriptions")
+      .send({
+        name: "",
+        price: 0,
+        billingCycle: "MONTHLY",
+        renewalDate: ""
+      })
+      .expect(400);
+
+    expect(response.body.message).toBe("Validation failed");
+    expect(mockPrisma.subscription.create).not.toHaveBeenCalled();
   });
 
   it("updates a subscription owned by the authenticated user", async () => {
@@ -232,6 +287,31 @@ describe("subscription API", () => {
       .send({ name: "Forbidden update" })
       .expect(404);
   });
+
+  it("does not allow a user to read another user's subscription", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(null);
+
+    await agent.get(`/api/subscriptions/${subscription.id}`).expect(404);
+
+    expect(mockPrisma.subscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: subscription.id,
+          userId: user.id
+        }
+      })
+    );
+  });
 });
 
 describe("admin API", () => {
@@ -248,6 +328,32 @@ describe("admin API", () => {
     const response = await agent.get("/api/admin/users").expect(200);
 
     expect(response.body.users).toHaveLength(1);
+  });
+
+  it("allows an admin to list all subscriptions", async () => {
+    const password = await bcrypt.hash("Admin123!", 12);
+    const agent = request.agent(app);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ ...admin, password });
+    await agent.post("/api/auth/login").send({ email: admin.email, password: "Admin123!" }).expect(200);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(admin);
+    mockPrisma.subscription.findMany.mockResolvedValueOnce([
+      { ...subscription, user: { id: user.id, name: user.name, email: user.email } }
+    ]);
+
+    const response = await agent.get("/api/admin/subscriptions").expect(200);
+
+    expect(response.body.subscriptions).toHaveLength(1);
+    expect(response.body.subscriptions[0].user.email).toBe(user.email);
+    expect(response.body.totalMonthlyAmount).toBe(12);
+    expect(mockPrisma.subscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          user: expect.any(Object)
+        })
+      })
+    );
   });
 
   it("rejects admin routes for regular users", async () => {
@@ -276,6 +382,23 @@ describe("admin API", () => {
 
     expect(mockPrisma.user.delete).toHaveBeenCalledWith({
       where: { id: user.id }
+    });
+  });
+
+  it("allows an admin to delete a subscription", async () => {
+    const password = await bcrypt.hash("Admin123!", 12);
+    const agent = request.agent(app);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ ...admin, password });
+    await agent.post("/api/auth/login").send({ email: admin.email, password: "Admin123!" }).expect(200);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(admin);
+    mockPrisma.subscription.delete.mockResolvedValueOnce(subscription);
+
+    await agent.delete(`/api/admin/subscriptions/${subscription.id}`).expect(204);
+
+    expect(mockPrisma.subscription.delete).toHaveBeenCalledWith({
+      where: { id: subscription.id }
     });
   });
 });

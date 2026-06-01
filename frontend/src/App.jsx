@@ -87,6 +87,7 @@ export function App() {
           subscriptions={subscriptionState.subscriptions}
           totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
           loading={subscriptionState.loading}
+          error={subscriptionState.error}
           user={user}
           setTab={navigateTab}
           onAddSubscription={openAddSubscription}
@@ -107,6 +108,7 @@ export function App() {
           subscriptions={subscriptionState.subscriptions}
           totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
           loading={subscriptionState.loading}
+          error={subscriptionState.error}
           setTab={navigateTab}
         />
       )}
@@ -119,7 +121,7 @@ export function App() {
           logout={logout}
         />
       )}
-      {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} notify={notify} />}
+      {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} notify={notify} currentUser={user} />}
       {modalState.open && tab !== "subscriptions" && (
         <SubscriptionModal
           t={t}

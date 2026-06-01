@@ -1,14 +1,23 @@
 import { useState } from "react";
 import { apiRequest } from "../api/client.js";
+import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionModal } from "../components/SubscriptionModal.jsx";
 import { cycleLabels, formatMoney, statusLabels } from "../utils/subscriptions.js";
 
 const filterOptions = [
-  ["", "All"],
-  ["ACTIVE", "Active"],
-  ["INACTIVE", "Paused"],
-  ["ARCHIVED", "Archived"]
+  ["", "all"],
+  ["ACTIVE", "active"],
+  ["INACTIVE", "paused"],
+  ["ARCHIVED", "archived"]
 ];
+
+function buildFilterQuery(filters) {
+  const params = new URLSearchParams();
+  const search = filters.search.trim();
+  if (search) params.set("search", search);
+  if (filters.status) params.set("status", filters.status);
+  return params.toString() ? `?${params.toString()}` : "";
+}
 
 function getRenewalLabel(subscription) {
   if (subscription.status === "ARCHIVED") return "Archived";
@@ -61,10 +70,10 @@ function SubscriptionCard({ sub, onEdit, onArchive }) {
           <span className={`text-[12px] font-semibold ${isArchived || isPaused ? "font-medium text-slate-500" : "text-slate-700"}`}>{getRenewalLabel(sub)}</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <button onClick={() => onEdit(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95">
+          <button aria-label={`Edit ${sub.name}`} onClick={() => onEdit(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95">
             <i className="ph ph-pencil-simple text-[15px]" />
           </button>
-          <button onClick={() => onArchive(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 active:scale-95">
+          <button aria-label={`Archive ${sub.name}`} onClick={() => onArchive(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 active:scale-95">
             <i className="ph ph-archive text-[15px]" />
           </button>
         </div>
@@ -75,12 +84,24 @@ function SubscriptionCard({ sub, onEdit, onArchive }) {
 
 export function SubscriptionsPage({ t, subscriptions, categories, loading, error, load, notify, modalState, setModalState }) {
   const [filters, setFilters] = useState({ search: "", status: "" });
+  const [appliedQuery, setAppliedQuery] = useState("");
 
-  const applyFilters = (nextFilters = filters) => {
-    const params = new URLSearchParams();
-    if (nextFilters.search) params.set("search", nextFilters.search);
-    if (nextFilters.status) params.set("status", nextFilters.status);
-    load(params.toString() ? `?${params.toString()}` : "");
+  const applyFilters = (nextFilters = filters, { force = false } = {}) => {
+    const nextQuery = buildFilterQuery(nextFilters);
+    if (!force && nextQuery === appliedQuery) return;
+    setAppliedQuery(nextQuery);
+    load(nextQuery);
+  };
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    applyFilters();
+  };
+
+  const resetFilters = () => {
+    const next = { search: "", status: "" };
+    setFilters(next);
+    applyFilters(next);
   };
 
   const saveSubscription = async (payload, isEditing) => {
@@ -92,7 +113,7 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
       notify(t.subscriptionCreated);
     }
     setModalState({ open: false, subscription: null });
-    load();
+    applyFilters(filters, { force: true });
   };
 
   const archive = async (subscription) => {
@@ -100,7 +121,7 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
     try {
       await apiRequest(`/subscriptions/${subscription.id}`, { method: "DELETE" });
       notify(t.subscriptionArchived);
-      load();
+      applyFilters(filters, { force: true });
     } catch (err) {
       notify(err.message, "error");
     }
@@ -117,8 +138,8 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
       <main className="flex h-full w-full flex-col">
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 pb-4 pt-12 shadow-sm lg:static lg:rounded-[24px] lg:px-6 lg:pt-5">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Subscriptions</h1>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">Manage your recurring costs</p>
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t.subscriptions}</h1>
+            <p className="mt-0.5 text-xs font-medium text-slate-500">{t.manageRecurringCosts}</p>
           </div>
           <button aria-label="Add Subscription" onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
             <i className="ph-bold ph-plus text-lg" />
@@ -126,44 +147,54 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
         </header>
 
         <section className="border-b border-slate-100 bg-white px-5 py-4 lg:mt-4 lg:rounded-[24px] lg:border lg:border-slate-100">
-          <div className="relative">
-            <i className="ph ph-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(event) => setFilters({ ...filters, search: event.target.value })}
-              onKeyDown={(event) => event.key === "Enter" && applyFilters()}
-              placeholder="Search subscriptions..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm transition-all placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none"
-            />
-          </div>
+          <form className="flex gap-2" onSubmit={submitSearch}>
+            <div className="relative min-w-0 flex-1">
+              <i className="ph ph-magnifying-glass pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                aria-label={t.search}
+                type="text"
+                value={filters.search}
+                onChange={(event) => setFilters({ ...filters, search: event.target.value })}
+                placeholder={t.searchSubscriptions}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm transition-all placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none"
+              />
+            </div>
+            <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-95">
+              {t.applySearch}
+            </button>
+          </form>
 
           <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto">
-            {filterOptions.map(([value, label]) => (
+            {filterOptions.map(([value, key]) => (
               <button
-                key={label}
+                key={key}
                 onClick={() => updateStatus(value)}
                 className={`shrink-0 rounded-xl px-4 py-2 text-[13px] font-bold transition-all ${filters.status === value ? "bg-slate-900 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"}`}
               >
-                {label}
+                {t[key]}
               </button>
             ))}
+            {(filters.search || filters.status || appliedQuery) && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="shrink-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-[13px] font-bold text-slate-500 transition-all hover:bg-white hover:text-slate-800"
+              >
+                {t.resetFilters}
+              </button>
+            )}
           </div>
 
-          {error && <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</p>}
+          {error && subscriptions.length > 0 && <div className="mt-3"><StatePanel title={t.apiErrorTitle} message={error || t.apiErrorMessage} tone="error" icon="ph-warning-circle" /></div>}
         </section>
 
         <section className="flex-1 px-5 py-5 lg:px-0">
           {loading ? (
-            <p className="py-16 text-center text-sm font-semibold text-slate-400">{t.loading}</p>
+            <StatePanel title={t.loadingSubscriptions} message={t.loadingPleaseWait} tone="loading" icon="ph-spinner-gap" />
+          ) : error && subscriptions.length === 0 ? (
+            <StatePanel title={t.apiErrorTitle} message={error || t.apiErrorMessage} tone="error" icon="ph-warning-circle" />
           ) : subscriptions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-100">
-                <i className="ph ph-receipt text-2xl text-slate-400" />
-              </div>
-              <p className="text-[15px] font-semibold text-slate-600">No subscriptions found</p>
-              <p className="mt-1 text-[13px] text-slate-400">Try adjusting your search or filter</p>
-            </div>
+            <StatePanel title={t.emptySubscriptionsTitle} message={t.emptySubscriptionsMessage} tone="empty" icon="ph-receipt" />
           ) : (
             <div className="grid gap-3.5 lg:grid-cols-2">
               {subscriptions.map((subscription) => (
