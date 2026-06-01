@@ -46,9 +46,11 @@ function RenewalCard({ item, index, desktop = false }) {
   );
 }
 
-export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, setTab, onAddSubscription }) {
+export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, user, setTab, onAddSubscription }) {
   const stats = getSubscriptionStats(subscriptions, totalMonthlyAmount);
   const renewals = stats.upcomingRenewals.slice(0, 5);
+  const displayName = user?.name ?? "User";
+  const avatarName = encodeURIComponent(displayName);
 
   return (
     <>
@@ -58,16 +60,17 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, s
           <header className="relative z-20 flex items-center justify-between px-6 pb-6 pt-12">
             <div className="flex flex-col gap-0.5">
               <span className="text-[11px] font-bold uppercase tracking-widest text-white/70">Welcome back,</span>
-              <h1 className="text-xl font-bold tracking-tight text-white">Alex Student</h1>
+              <h1 className="text-xl font-bold tracking-tight text-white">{displayName}</h1>
             </div>
             <div className="flex items-center gap-3">
-              <button className="relative flex size-11 items-center justify-center rounded-[14px] border border-white/30 bg-transparent text-white transition-colors hover:bg-white/10">
-                <i className="ph ph-bell text-xl" />
-                <span className="absolute right-2.5 top-2.5 size-2 rounded-full bg-rose-500" />
+              <button
+                type="button"
+                aria-label="Open profile"
+                className="flex size-11 items-center justify-center overflow-hidden rounded-[14px] border border-white/30 bg-transparent text-sm font-bold text-white shadow-sm transition hover:bg-white/10"
+                onClick={() => setTab("profile")}
+              >
+                <img src={`https://ui-avatars.com/api/?name=${avatarName}&background=E0E7FF&color=4338CA&bold=true`} alt="Profile" className="size-full object-cover" />
               </button>
-              <div className="flex size-11 items-center justify-center overflow-hidden rounded-[14px] border border-white/30 bg-transparent text-sm font-bold text-white shadow-sm">
-                <img src="https://ui-avatars.com/api/?name=Alex+Student&background=E0E7FF&color=4338CA&bold=true" alt="Profile" className="size-full object-cover" />
-              </div>
             </div>
           </header>
 

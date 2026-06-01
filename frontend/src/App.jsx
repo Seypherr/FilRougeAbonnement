@@ -10,6 +10,7 @@ import { AdminPage } from "./pages/AdminPage.jsx";
 import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
 import { AuthPage } from "./pages/AuthPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage.jsx";
 
 export function App() {
@@ -86,6 +87,7 @@ export function App() {
           subscriptions={subscriptionState.subscriptions}
           totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
           loading={subscriptionState.loading}
+          user={user}
           setTab={navigateTab}
           onAddSubscription={openAddSubscription}
         />
@@ -105,6 +107,16 @@ export function App() {
           subscriptions={subscriptionState.subscriptions}
           totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
           loading={subscriptionState.loading}
+          setTab={navigateTab}
+        />
+      )}
+      {tab === "profile" && (
+        <ProfilePage
+          t={t}
+          user={user}
+          language={language}
+          setLanguage={setLanguage}
+          logout={logout}
         />
       )}
       {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} notify={notify} />}

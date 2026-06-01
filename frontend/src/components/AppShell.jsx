@@ -1,21 +1,33 @@
-import { BarChart3, CreditCard, Grid2X2, Home, List, PieChart, Plus, Shield, UserRound } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, CreditCard, Grid2X2, Home, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
 import { Toast } from "./Toast.jsx";
 
 const navIconMap = {
   dashboard: Home,
   subscriptions: Grid2X2,
   statistics: BarChart3,
-  admin: Shield
+  admin: Shield,
+  profile: UserRound
 };
 
-export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAddSubscription }) {
+export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAddSubscription, logout }) {
+  const [logoutError, setLogoutError] = useState("");
   const mobileItems = [
     ["dashboard", Home],
     ["subscriptions", Grid2X2],
     ["add", Plus],
     ["statistics", PieChart],
-    [user.role === "ADMIN" ? "admin" : "dashboard", user.role === "ADMIN" ? Shield : UserRound]
+    [user.role === "ADMIN" ? "admin" : "profile", user.role === "ADMIN" ? Shield : UserRound]
   ];
+
+  const handleSidebarLogout = async () => {
+    setLogoutError("");
+    try {
+      await logout();
+    } catch (err) {
+      setLogoutError(err.message || t.logoutFailed);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[280px_1fr] lg:p-6">
@@ -61,13 +73,27 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
             <Plus size={18} />
             Add New
           </button>
-          <div className="flex items-center gap-3 rounded-2xl bg-slate-50 p-3">
+          <button
+            type="button"
+            onClick={() => setTab("profile")}
+            className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left transition hover:bg-[#F4F0FF] active:scale-[0.99]"
+          >
             <div className="grid size-10 place-items-center rounded-full bg-[#F4F0FF] text-sm font-black text-[#7B42FF]">{user.name?.[0] ?? "U"}</div>
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{user.name}</p>
               <p className="truncate text-xs font-semibold text-slate-500">{user.email}</p>
             </div>
-          </div>
+          </button>
+          {logoutError && <p className="rounded-2xl bg-rose-50 p-3 text-xs font-bold text-rose-700">{logoutError}</p>}
+          <button
+            type="button"
+            aria-label={t.logoutFromSidebar}
+            onClick={handleSidebarLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-rose-100 hover:bg-rose-50 hover:text-rose-700 active:scale-[0.98]"
+          >
+            <LogOut size={17} />
+            {t.logout}
+          </button>
         </div>
       </aside>
 
@@ -84,7 +110,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
         {mobileItems.map(([id, Icon], index) => {
           const active = tab === id;
           const isAdd = id === "add";
-          const label = isAdd ? "Add Subscription" : navItems.find(([navId]) => navId === id)?.[1] ?? id;
+          const label = isAdd ? t.addSubscription : navItems.find(([navId]) => navId === id)?.[1] ?? (id === "profile" ? t.profile : id);
           return (
             <button
               key={`${id}-${index}`}

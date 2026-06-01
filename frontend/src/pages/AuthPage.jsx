@@ -7,6 +7,7 @@ export function AuthPage({ t, language, setLanguage }) {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const emailInvalid = form.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
 
   const submit = async (event) => {
@@ -49,9 +50,9 @@ export function AuthPage({ t, language, setLanguage }) {
         <div className="relative z-10 flex flex-1 flex-col overflow-y-auto px-6 py-6">
           <div className="mb-8">
             <h1 className="mb-2 text-3xl font-bold tracking-tight text-[#1B1D28]">
-              {mode === "login" ? "Welcome back! 👋" : t.createAccount}
+              {mode === "login" ? t.loginTitle : t.createAccount}
             </h1>
-            <p className="text-sm font-medium text-[#8E95A9]">Enter your credentials to access your dashboard.</p>
+            <p className="text-sm font-medium text-[#8E95A9]">{t.authSubtitle}</p>
           </div>
 
           <div className="mb-8 flex shrink-0 rounded-full border border-[#EAECEF] bg-[#F8F9FB] p-1.5">
@@ -60,14 +61,14 @@ export function AuthPage({ t, language, setLanguage }) {
               onClick={() => setMode("login")}
               className={`flex-1 rounded-full py-2.5 text-sm transition-all ${mode === "login" ? "bg-white font-bold text-[#1B1D28] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]" : "font-medium text-[#8E95A9] hover:text-[#1B1D28]"}`}
             >
-              Log In
+              {t.login}
             </button>
             <button
               type="button"
               onClick={() => setMode("register")}
               className={`flex-1 rounded-full py-2.5 text-sm transition-all ${mode === "register" ? "bg-white font-bold text-[#1B1D28] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06)]" : "font-medium text-[#8E95A9] hover:text-[#1B1D28]"}`}
             >
-              Register
+              {t.register}
             </button>
           </div>
 
@@ -85,7 +86,7 @@ export function AuthPage({ t, language, setLanguage }) {
             )}
 
             <div>
-              <label className="mb-2 ml-1 block text-sm font-semibold text-[#1B1D28]">Email Address</label>
+              <label className="mb-2 ml-1 block text-sm font-semibold text-[#1B1D28]">{t.emailAddress}</label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                   <i className={`ph-fill ph-envelope-simple text-lg ${emailInvalid ? "text-[#FF3E5D]" : "text-[#8E95A9]"}`} />
@@ -95,7 +96,7 @@ export function AuthPage({ t, language, setLanguage }) {
                   value={form.email}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
                   className={`block w-full rounded-full border-2 py-3.5 pl-11 pr-11 text-sm font-medium text-[#1B1D28] placeholder-[#8E95A9] outline-none transition-all ${emailInvalid ? "border-[#FF3E5D]/30 bg-[#FFF0F3] focus:border-[#FF3E5D] focus:ring-4 focus:ring-[#FF3E5D]/20" : "border-[#EAECEF] bg-[#F8F9FB] focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#7047EB]/20"}`}
-                  placeholder="name@example.com"
+                  placeholder={t.emailPlaceholder}
                   required
                 />
                 {emailInvalid && (
@@ -104,29 +105,34 @@ export function AuthPage({ t, language, setLanguage }) {
                   </div>
                 )}
               </div>
-              {emailInvalid && <p className="ml-1 mt-2 text-sm font-medium text-[#FF3E5D]">Please enter a valid email format.</p>}
+              {emailInvalid && <p className="ml-1 mt-2 text-sm font-medium text-[#FF3E5D]">{t.invalidEmail}</p>}
             </div>
 
             <div>
               <div className="mb-2 ml-1 flex items-center justify-between">
-                <label className="block text-sm font-semibold text-[#1B1D28]">Password</label>
+                <label className="block text-sm font-semibold text-[#1B1D28]">{t.password}</label>
               </div>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
                   <i className="ph-fill ph-lock-key text-lg text-[#8E95A9]" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={(event) => setForm({ ...form, password: event.target.value })}
                   className="block w-full rounded-full border-2 border-[#EAECEF] bg-[#F8F9FB] py-3.5 pl-11 pr-12 text-sm font-medium text-[#1B1D28] outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#7047EB]/20"
-                  placeholder="Enter your password"
+                  placeholder={t.passwordPlaceholder}
                   required
                   minLength={8}
                 />
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-[#8E95A9]">
-                  <i className="ph-fill ph-eye-slash text-lg" />
-                </div>
+                <button
+                  type="button"
+                  aria-label={showPassword ? t.hidePassword : t.showPassword}
+                  className="absolute inset-y-0 right-0 flex items-center pr-4 text-[#8E95A9] transition-colors hover:text-[#7047EB]"
+                  onClick={() => setShowPassword((value) => !value)}
+                >
+                  <i className={`ph-fill ${showPassword ? "ph-eye" : "ph-eye-slash"} text-lg`} />
+                </button>
               </div>
             </div>
 
@@ -137,26 +143,9 @@ export function AuthPage({ t, language, setLanguage }) {
               disabled={loading || emailInvalid}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-[#7047EB] py-4 font-bold text-white shadow-[0_8px_24px_-6px_rgba(112,71,235,0.4)] transition-all hover:bg-[#5E35D9] active:scale-[0.98] disabled:opacity-60"
             >
-              {mode === "login" ? "Sign In" : "Create Account"}
+              {mode === "login" ? t.signIn : t.createAccount}
               <i className="ph-bold ph-arrow-right text-lg" />
             </button>
-
-            <div className="my-3 flex items-center gap-4">
-              <div className="h-[2px] flex-1 rounded-full bg-[#EAECEF]" />
-              <span className="text-xs font-bold uppercase tracking-widest text-[#8E95A9]">Or</span>
-              <div className="h-[2px] flex-1 rounded-full bg-[#EAECEF]" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pb-2">
-              <button type="button" disabled className="flex items-center justify-center gap-2.5 rounded-2xl border-2 border-[#EAECEF] bg-white py-3.5 text-sm font-bold text-[#1B1D28] shadow-sm opacity-70">
-                <i className="ph-fill ph-google-logo text-xl" />
-                Google
-              </button>
-              <button type="button" disabled className="flex items-center justify-center gap-2.5 rounded-2xl border-2 border-[#EAECEF] bg-white py-3.5 text-sm font-bold text-[#1B1D28] shadow-sm opacity-70">
-                <i className="ph-fill ph-apple-logo text-xl" />
-                Apple
-              </button>
-            </div>
           </form>
         </div>
       </section>

@@ -87,9 +87,6 @@ export function AdminPage({ t, notify }) {
             </div>
             <h1 className="text-xl font-bold tracking-tight text-slate-800">Admin Panel</h1>
           </div>
-          <button className="flex size-10 items-center justify-center rounded-full border border-slate-100 bg-slate-50 text-slate-600 transition-colors hover:bg-slate-100">
-            <i className="ph ph-gear text-xl" />
-          </button>
         </div>
         <div className="mx-auto flex max-w-7xl gap-6 border-b border-slate-100 px-5">
           <button onClick={() => setTab("users")} className={`border-b-2 pb-3 text-sm font-semibold transition-colors ${tab === "users" ? "border-[#6C51FF] text-[#6C51FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>Users</button>

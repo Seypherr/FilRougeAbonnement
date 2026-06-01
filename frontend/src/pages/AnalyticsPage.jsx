@@ -20,7 +20,7 @@ function CategoryBar({ name, amount, width, color }) {
   );
 }
 
-export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading }) {
+export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, setTab }) {
   const [period, setPeriod] = useState("month");
   const stats = getSubscriptionStats(subscriptions, totalMonthlyAmount);
   const total = period === "year" ? stats.totalYearly : totalMonthlyAmount;
@@ -36,9 +36,14 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading })
       <div className="relative lg:hidden">
         <div className="absolute left-0 top-0 z-0 h-[360px] w-full rounded-b-[48px] bg-[linear-gradient(145deg,#6C51FF_0%,#9542FF_100%)]" />
         <header className="relative z-30 flex items-center justify-between px-6 pb-4 pt-12">
-          <div className="flex size-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-sm transition-colors hover:bg-white/20">
+          <button
+            type="button"
+            aria-label={t.backToDashboard}
+            className="flex size-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white shadow-sm transition-colors hover:bg-white/20"
+            onClick={() => setTab("dashboard")}
+          >
             <i className="ph-bold ph-caret-left text-lg" />
-          </div>
+          </button>
           <h1 className="text-[18px] font-bold tracking-tight text-white">Analytics</h1>
           <div className="w-10" />
         </header>
