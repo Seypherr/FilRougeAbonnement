@@ -32,14 +32,19 @@ export function App() {
       return;
     }
 
+    const changeTab = () => {
+      setModalState({ open: false, subscription: null });
+      setTab(nextTab);
+    };
+
     if (document.startViewTransition) {
       document.startViewTransition(() => {
-        flushSync(() => setTab(nextTab));
+        flushSync(changeTab);
       });
       return;
     }
 
-    setTab(nextTab);
+    changeTab();
   };
 
   if (loading) {

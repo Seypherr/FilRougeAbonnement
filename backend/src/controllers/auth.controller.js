@@ -1,4 +1,6 @@
 import { prisma } from "../config/prisma.js";
+import jwt from "jsonwebtoken";
+import { env } from "../config/env.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
 import {
@@ -54,7 +56,29 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 export const me = asyncHandler(async (req, res) => {
-  res.json({ user: req.user });
+  const token = req.cookies?.[env.COOKIE_NAME];
+
+  if (!token) {
+    return res.json({ user: null });
+  }
+
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET);
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: publicUserSelect
+    });
+
+    if (!user || !user.isActive) {
+      clearAuthCookie(res);
+      return res.json({ user: null });
+    }
+
+    return res.json({ user });
+  } catch {
+    clearAuthCookie(res);
+    return res.json({ user: null });
+  }
 });
 
 export const logout = asyncHandler(async (_req, res) => {

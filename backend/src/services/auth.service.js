@@ -25,8 +25,8 @@ export const signAuthToken = (user) =>
 export const setAuthCookie = (res, token) => {
   res.cookie(env.COOKIE_NAME, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    secure: env.COOKIE_SECURE,
+    sameSite: env.COOKIE_SAME_SITE,
     maxAge: 7 * 24 * 60 * 60 * 1000
   });
 };
@@ -34,7 +34,7 @@ export const setAuthCookie = (res, token) => {
 export const clearAuthCookie = (res) => {
   res.clearCookie(env.COOKIE_NAME, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "none" : "lax"
+    secure: env.COOKIE_SECURE,
+    sameSite: env.COOKIE_SAME_SITE
   });
 };

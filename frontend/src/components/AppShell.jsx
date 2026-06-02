@@ -63,15 +63,15 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
 
         <div className="mt-auto grid gap-5">
           <div className="overflow-hidden rounded-3xl bg-[#7B42FF] p-5 text-white shadow-lg shadow-violet-100">
-            <p className="text-sm font-black">Demo ready</p>
-            <p className="mt-2 text-xs font-semibold leading-relaxed text-violet-100">Future features.</p>
+            <p className="text-sm font-black">{t.demoReady}</p>
+            <p className="mt-2 text-xs font-semibold leading-relaxed text-violet-100">{t.demoSubtitle}</p>
           </div>
           <button
             onClick={onAddSubscription}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.98]"
           >
             <Plus size={18} />
-            Add New
+            {t.addNew}
           </button>
           <button
             type="button"

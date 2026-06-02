@@ -8,6 +8,10 @@ process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
 process.env.JWT_SECRET = "test-secret-with-more-than-24-characters";
 process.env.JWT_EXPIRES_IN = "7d";
 process.env.COOKIE_NAME = "subscription_manager_token";
+process.env.COOKIE_SECURE = "false";
+process.env.COOKIE_SAME_SITE = "lax";
+process.env.AUTH_RATE_LIMIT_WINDOW_MS = "60000";
+process.env.AUTH_RATE_LIMIT_MAX = "100";
 
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
@@ -82,6 +86,35 @@ beforeEach(() => {
 });
 
 describe("auth API", () => {
+  it("sets security headers on API responses", async () => {
+    const response = await request(app).get("/api/health").expect(200);
+
+    expect(response.headers["x-powered-by"]).toBeUndefined();
+    expect(response.headers["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers["x-frame-options"]).toBeDefined();
+  });
+
+  it("allows configured CORS origin with credentials", async () => {
+    const response = await request(app)
+      .get("/api/health")
+      .set("Origin", "http://localhost:5173")
+      .expect(200);
+
+    expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+    expect(response.headers["access-control-allow-credentials"]).toBe("true");
+  });
+
+  it("adds rate limit headers to auth endpoints", async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "missing@test.local", password: "Password123!" })
+      .expect(401);
+
+    expect(response.headers["ratelimit-limit"] ?? response.headers["x-ratelimit-limit"]).toBeDefined();
+  });
+
   it("registers a user and sets an HTTP-only cookie", async () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(null);
     mockPrisma.user.create.mockResolvedValueOnce(user);
@@ -93,6 +126,7 @@ describe("auth API", () => {
 
     expect(response.body.user.email).toBe(user.email);
     expect(response.headers["set-cookie"][0]).toContain("HttpOnly");
+    expect(response.headers["set-cookie"][0]).toContain("SameSite=Lax");
   });
 
   it("logs in a user with valid credentials", async () => {
@@ -108,8 +142,14 @@ describe("auth API", () => {
     expect(response.body.user.password).toBeUndefined();
   });
 
-  it("rejects protected routes without a cookie", async () => {
-    await request(app).get("/api/auth/me").expect(401);
+  it("returns an empty session without a cookie", async () => {
+    const response = await request(app).get("/api/auth/me").expect(200);
+
+    expect(response.body.user).toBeNull();
+  });
+
+  it("rejects protected subscription routes without a cookie", async () => {
+    await request(app).get("/api/subscriptions").expect(401);
   });
 });
 

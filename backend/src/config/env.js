@@ -1,14 +1,80 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().default(4000),
-  CLIENT_ORIGIN: z.string().url().default("http://localhost:5173"),
-  DATABASE_URL: z.string().min(1),
-  JWT_SECRET: z.string().min(24, "JWT_SECRET must contain at least 24 characters"),
-  JWT_EXPIRES_IN: z.string().default("7d"),
-  COOKIE_NAME: z.string().default("subscription_manager_token")
-});
+const isProduction = process.env.NODE_ENV === "production";
 
-export const env = envSchema.parse(process.env);
+const booleanFromEnv = (defaultValue) =>
+  z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) {
+        return defaultValue;
+      }
+
+      return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+    });
+
+const originsFromEnv = z
+  .string()
+  .optional()
+  .transform((value) => {
+    if (!value) {
+      return [];
+    }
+
+    return value
+      .split(",")
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+  })
+  .pipe(z.array(z.string().url()));
+
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().default(4000),
+    CLIENT_ORIGIN: z.string().url().default("http://localhost:5173"),
+    CLIENT_ORIGINS: originsFromEnv,
+    DATABASE_URL: z.string().min(1),
+    JWT_SECRET: z.string().min(24, "JWT_SECRET must contain at least 24 characters"),
+    JWT_EXPIRES_IN: z.string().default("7d"),
+    COOKIE_NAME: z.string().default("subscription_manager_token"),
+    COOKIE_SECURE: booleanFromEnv(isProduction),
+    COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default(isProduction ? "none" : "lax"),
+    AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(isProduction ? 10 : 100)
+  })
+  .superRefine((value, context) => {
+    if (value.COOKIE_SAME_SITE === "none" && !value.COOKIE_SECURE) {
+      context.addIssue({
+        code: "custom",
+        path: ["COOKIE_SECURE"],
+        message: "COOKIE_SECURE must be true when COOKIE_SAME_SITE is none"
+      });
+    }
+
+    if (value.NODE_ENV === "production" && value.JWT_SECRET.length < 48) {
+      context.addIssue({
+        code: "custom",
+        path: ["JWT_SECRET"],
+        message: "JWT_SECRET must contain at least 48 characters in production"
+      });
+    }
+
+    const weakProductionSecrets = ["change-this-secret-before-production", "secret-long-et-unique"];
+    if (value.NODE_ENV === "production" && weakProductionSecrets.includes(value.JWT_SECRET.toLowerCase())) {
+      context.addIssue({
+        code: "custom",
+        path: ["JWT_SECRET"],
+        message: "JWT_SECRET must be unique, random, and private in production"
+      });
+    }
+  });
+
+const parsedEnv = envSchema.parse(process.env);
+
+export const env = {
+  ...parsedEnv,
+  CLIENT_ORIGINS: [...new Set([parsedEnv.CLIENT_ORIGIN, ...parsedEnv.CLIENT_ORIGINS])]
+};

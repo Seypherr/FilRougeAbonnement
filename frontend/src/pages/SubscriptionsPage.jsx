@@ -2,7 +2,7 @@ import { useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionModal } from "../components/SubscriptionModal.jsx";
-import { cycleLabels, formatMoney, statusLabels } from "../utils/subscriptions.js";
+import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
 
 const filterOptions = [
   ["", "all"],
@@ -19,30 +19,31 @@ function buildFilterQuery(filters) {
   return params.toString() ? `?${params.toString()}` : "";
 }
 
-function getRenewalLabel(subscription) {
-  if (subscription.status === "ARCHIVED") return "Archived";
-  if (subscription.status === "INACTIVE") return "Billing suspended";
+function getRenewalLabel(subscription, t) {
+  if (subscription.status === "ARCHIVED") return t.archived;
+  if (subscription.status === "INACTIVE") return t.billingSuspended;
   const now = new Date();
   const date = new Date(subscription.renewalDate);
   const diff = Math.ceil((date.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0)) / 86400000);
-  if (diff <= 1) return "Renews Tomorrow";
-  return `Renews in ${diff} days`;
+  if (diff <= 1) return t.renewsTomorrow;
+  return t.renewsInDays.replace("{count}", diff);
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, t }) {
   if (status === "ACTIVE") {
-    return <span className="rounded border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-emerald-700">Active</span>;
+    return <span className="rounded border border-emerald-200/60 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-emerald-700">{t.active}</span>;
   }
   if (status === "INACTIVE") {
-    return <span className="rounded border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-amber-700">Paused</span>;
+    return <span className="rounded border border-amber-200/60 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-amber-700">{t.paused}</span>;
   }
-  return <span className="rounded border border-slate-200/60 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-slate-500">Archived</span>;
+  return <span className="rounded border border-slate-200/60 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-slate-500">{t.archived}</span>;
 }
 
-function SubscriptionCard({ sub, onEdit, onArchive }) {
+function SubscriptionCard({ t, sub, onEdit, onArchive }) {
   const isArchived = sub.status === "ARCHIVED";
   const isPaused = sub.status === "INACTIVE";
   const color = isArchived || isPaused ? "bg-slate-300" : "bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.2)]";
+  const cycleLabel = sub.billingCycle ? t[cycleLabels[sub.billingCycle]] : t.monthly;
 
   return (
     <div className="flex flex-col gap-3.5 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
@@ -53,12 +54,12 @@ function SubscriptionCard({ sub, onEdit, onArchive }) {
           </div>
           <div>
             <h3 className="text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
-            <p className="mt-0.5 text-[13px] font-medium text-slate-500">{sub.category?.name ?? "Category"} · {sub.billingCycle ? cycleLabels[sub.billingCycle] : "monthly"}</p>
+            <p className="mt-0.5 text-[13px] font-medium text-slate-500">{sub.category?.name ?? t.categoryPlaceholder} · {cycleLabel}</p>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <p className={`text-[15px] font-bold leading-tight ${isArchived || isPaused ? "text-slate-400" : "text-slate-900"}`}>{formatMoney(sub.price)}</p>
-          <StatusBadge status={sub.status} />
+          <StatusBadge status={sub.status} t={t} />
         </div>
       </div>
 
@@ -67,7 +68,7 @@ function SubscriptionCard({ sub, onEdit, onArchive }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1">
           <span className={`size-2 rounded-full ${color}`} />
-          <span className={`text-[12px] font-semibold ${isArchived || isPaused ? "font-medium text-slate-500" : "text-slate-700"}`}>{getRenewalLabel(sub)}</span>
+          <span className={`text-[12px] font-semibold ${isArchived || isPaused ? "font-medium text-slate-500" : "text-slate-700"}`}>{getRenewalLabel(sub, t)}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <button aria-label={`Edit ${sub.name}`} onClick={() => onEdit(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95">
@@ -141,7 +142,7 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
             <h1 className="text-xl font-bold tracking-tight text-slate-900">{t.subscriptions}</h1>
             <p className="mt-0.5 text-xs font-medium text-slate-500">{t.manageRecurringCosts}</p>
           </div>
-          <button aria-label="Add Subscription" onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
+          <button aria-label={t.addSubscription} onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
             <i className="ph-bold ph-plus text-lg" />
           </button>
         </header>
@@ -198,7 +199,7 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
           ) : (
             <div className="grid gap-3.5 lg:grid-cols-2">
               {subscriptions.map((subscription) => (
-                <SubscriptionCard key={subscription.id} sub={subscription} onEdit={(sub) => setModalState({ open: true, subscription: sub })} onArchive={archive} />
+                <SubscriptionCard key={subscription.id} t={t} sub={subscription} onEdit={(sub) => setModalState({ open: true, subscription: sub })} onArchive={archive} />
               ))}
             </div>
           )}
