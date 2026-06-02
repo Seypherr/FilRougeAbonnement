@@ -74,7 +74,7 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
             <span className="mb-2 text-[13px] font-medium tracking-wide text-white/80">{t.totalSpend}</span>
             <div className="mb-2 flex items-baseline justify-center gap-1.5">
               <span className="text-4xl font-semibold text-white/70">$</span>
-              <span className="text-[64px] font-bold leading-none tracking-tight text-white">{Number(total || 0).toFixed(2)}</span>
+              <span className="text-[58px] font-bold leading-none tracking-tight text-white">{Number(total || 0).toFixed(2)}</span>
             </div>
             <div className="mx-auto mt-2 flex w-max items-center justify-center gap-3 rounded-[12px] px-4 py-2" style={{ backgroundColor: "#6E3BEA" }}>
               <i className="ph-fill ph-calendar-blank text-sm text-white/80" />
@@ -84,19 +84,19 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
           </div>
         </section>
 
-        <section className="relative z-10 mb-8 grid grid-cols-2 gap-4 px-6">
-          <div className="grid items-center gap-x-3 gap-y-0.5 rounded-[24px] bg-white p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)]" style={{ gridTemplateColumns: "auto 1fr" }}>
+        <section className="relative z-10 mb-8 grid grid-cols-2 gap-3 px-6">
+          <div className="grid min-w-0 items-center gap-x-3 gap-y-0.5 rounded-[24px] bg-white p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)]" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
             <div className="row-span-2 flex size-11 items-center justify-center rounded-full bg-[#E8F8F0]">
               <i className="ph-bold ph-trend-up text-xl text-[#00C48C]" />
             </div>
-            <span className="self-end text-[11px] font-bold uppercase tracking-widest text-slate-400">{t.averageCost}</span>
+            <span className="self-end text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-400">{t.averageCost}</span>
             <span className="self-start text-[20px] font-bold leading-none text-slate-800">{formatMoney(stats.averageMonthly)}</span>
           </div>
-          <div className="grid items-center gap-x-3 gap-y-0.5 rounded-[24px] bg-white p-4 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)]" style={{ gridTemplateColumns: "auto 1fr" }}>
+          <div className="grid min-w-0 items-center gap-x-3 gap-y-0.5 rounded-[24px] bg-white p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)]" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
             <div className="row-span-2 flex size-11 items-center justify-center rounded-full bg-[#F1F3F5]">
               <i className="ph-bold ph-crown text-xl text-slate-500" />
             </div>
-            <span className="self-end text-[11px] font-bold uppercase tracking-widest text-slate-400">{t.highestSubscription}</span>
+            <span className="self-end text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-400">{t.highestSubscription}</span>
             <span className="self-start text-[20px] font-bold leading-none text-slate-800">{formatMoney(stats.highestMonthly)}</span>
           </div>
         </section>
@@ -151,11 +151,11 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
                 <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#F4F0FF] text-[#8255FF]">
                   <span className="font-bold">{index + 1}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-[15px] font-bold text-slate-800">{item.name}</p>
-                  <p className="text-[13px] font-medium text-slate-500">{item.category?.name ?? t.other}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-bold text-slate-800">{item.name}</p>
+                  <p className="truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? t.other}</p>
                 </div>
-                <p className="text-[15px] font-bold text-slate-800">{formatMoney(item.monthlyAmount)}</p>
+                <p className="shrink-0 text-[15px] font-bold text-slate-800">{formatMoney(item.monthlyAmount)}</p>
               </div>
             ))
           )}

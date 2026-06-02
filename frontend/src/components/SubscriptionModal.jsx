@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { cycleLabels, emptySubscription, toApiPayload, toFormData } from "../utils/subscriptions.js";
 
 const validBillingCycles = Object.keys(cycleLabels);
@@ -76,26 +77,26 @@ export function SubscriptionModal({ t, subscription, categories, onClose, onSubm
     change("status", form.status === "ACTIVE" ? "INACTIVE" : "ACTIVE");
   };
 
-  return (
-    <div className="fixed inset-0 z-40 flex flex-col justify-end bg-slate-900/40 backdrop-blur-[2px]">
-      <div className="flex max-h-[90vh] w-full flex-col rounded-t-[32px] bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:mx-auto lg:mb-8 lg:max-w-2xl lg:rounded-[32px]">
-        <div className="flex w-full justify-center pb-1 pt-3">
+  const modal = (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center overscroll-contain bg-slate-900/40 p-0 backdrop-blur-[2px] lg:items-center lg:p-6">
+      <div className="flex max-h-[calc(100dvh-16px)] min-h-0 w-full flex-col overflow-hidden rounded-t-[32px] bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:max-h-[min(92dvh,760px)] lg:max-w-3xl lg:rounded-[32px]">
+        <div className="flex w-full shrink-0 justify-center pb-1 pt-3">
           <div className="h-1.5 w-12 rounded-full bg-slate-200" />
         </div>
 
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-[32px] border-b border-slate-100 bg-white px-6 py-4">
-          <div>
+        <div className="z-10 flex shrink-0 items-center justify-between gap-4 rounded-t-[32px] border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
+          <div className="min-w-0">
             <h2 className="text-lg font-bold text-slate-900">{isEditing ? t.editSubscription : t.addSubscription}</h2>
             <p className="text-xs font-medium text-slate-500">
               {isEditing ? t.updateSubscriptionDetails.replace("{name}", form.name || t.name) : t.newSubscriptionDetails}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="flex size-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100">
+          <button type="button" aria-label={t.closeModal} onClick={onClose} className="flex size-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-slate-100">
             <i className="ph-bold ph-x text-sm" />
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col gap-5 overflow-y-auto bg-white p-6">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto bg-white p-5 sm:p-6">
           {(saved || error) && (
             <div className={`flex items-start gap-3 rounded-[14px] border p-3 ${error ? "border-red-200/60 bg-red-50" : "border-emerald-200/60 bg-emerald-50"}`}>
               <i className={`ph-fill ${error ? "ph-warning-circle text-red-600" : "ph-check-circle text-emerald-600"} mt-0.5 shrink-0 text-[20px]`} />
@@ -106,7 +107,7 @@ export function SubscriptionModal({ t, subscription, categories, onClose, onSubm
             </div>
           )}
 
-          <div className="flex gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t.name} error={fieldErrors.name}>
               <input aria-label={t.name} aria-invalid={Boolean(fieldErrors.name)} value={form.name} onChange={(event) => change("name", event.target.value)} placeholder="e.g. Spotify" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100" />
             </Field>
@@ -138,12 +139,12 @@ export function SubscriptionModal({ t, subscription, categories, onClose, onSubm
             </Field>
           </div>
 
-          <div className="mt-1 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-            <div>
+          <div className="mt-1 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+            <div className="min-w-0">
               <span className="block text-[14px] font-bold text-slate-900">{t.activeStatus}</span>
               <span className="mt-0.5 block text-[12px] font-medium text-slate-500">{t.activeStatusHelp}</span>
             </div>
-            <button type="button" aria-label={t.toggleActiveStatus} onClick={toggleActive} className={`relative flex h-7 w-12 items-center rounded-full pl-0.5 shadow-inner transition-colors ${form.status === "ACTIVE" ? "bg-[#7B42FF]" : "bg-slate-300"}`}>
+            <button type="button" aria-label={t.toggleActiveStatus} onClick={toggleActive} className={`relative flex h-7 w-12 shrink-0 items-center rounded-full pl-0.5 shadow-inner transition-colors ${form.status === "ACTIVE" ? "bg-[#7B42FF]" : "bg-slate-300"}`}>
               <span className={`size-6 rounded-full bg-white shadow-sm transition-transform ${form.status === "ACTIVE" ? "translate-x-5" : "translate-x-0"}`} />
             </button>
           </div>
@@ -153,7 +154,7 @@ export function SubscriptionModal({ t, subscription, categories, onClose, onSubm
           </Field>
         </div>
 
-        <div className="flex gap-3 border-t border-slate-100 bg-white px-6 py-5 pb-8">
+        <div className="flex shrink-0 gap-3 border-t border-slate-100 bg-white px-5 py-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:px-6 sm:py-5 sm:pb-8">
           <button type="button" onClick={onClose} className="flex-1 rounded-[14px] border border-slate-200 px-4 py-3.5 text-[15px] font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95">
             {t.cancel}
           </button>
@@ -164,4 +165,6 @@ export function SubscriptionModal({ t, subscription, categories, onClose, onSubm
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

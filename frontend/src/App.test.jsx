@@ -313,6 +313,72 @@ describe("App", () => {
     expect(screen.getByText("Prix")).toBeInTheDocument();
   });
 
+  it("does not show future-feature promo buttons in the connected shell", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("$22.00").length).toBeGreaterThan(0));
+    expect(screen.queryByText(/Prêt pour la démo/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Fonctions à venir/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nouvel abonnement" })).toBeInTheDocument();
+  });
+
+  it("closes the subscription modal from the close icon", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("$22.00").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Ajouter un abonnement" }));
+    expect(screen.getByRole("heading", { name: "Ajouter un abonnement" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fermer la fenetre" }));
+    expect(screen.queryByRole("heading", { name: "Ajouter un abonnement" })).not.toBeInTheDocument();
+  });
+
+  it("opens the add modal from the bottom navigation without breaking the current page", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Prochains renouvellements").length).toBeGreaterThan(0));
+    fireEvent.click(getLastButtonByName("Ajouter un abonnement"));
+
+    expect(screen.getByRole("heading", { name: "Ajouter un abonnement" })).toBeInTheDocument();
+    expect(screen.getAllByText("Prochains renouvellements").length).toBeGreaterThan(0);
+    expect(screen.getByText("Prix")).toBeInTheDocument();
+  });
+
+  it("closes the add modal from the cancel action", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("$22.00").length).toBeGreaterThan(0));
+    fireEvent.click(getLastButtonByName("Ajouter un abonnement"));
+    expect(screen.getByRole("heading", { name: "Ajouter un abonnement" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Annuler" }));
+    expect(screen.queryByRole("heading", { name: "Ajouter un abonnement" })).not.toBeInTheDocument();
+  });
+
   it("opens the edit subscription modal with existing data", async () => {
     useAuth.mockReturnValue({
       user,
@@ -331,6 +397,21 @@ describe("App", () => {
     expect(screen.getByLabelText("Prix")).toHaveValue(12);
     expect(screen.getByLabelText("Cycle de facturation")).toHaveValue("MONTHLY");
     expect(screen.getByLabelText("Renouvellement")).toHaveValue("2026-06-05");
+  });
+
+  it("does not offer archive again for an already archived subscription", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
+
+    await waitFor(() => expect(screen.getByText("Archived Cloud")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Archive Archived Cloud" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive Netflix" })).toBeInTheDocument();
   });
 
   it("closes the add subscription modal when navigating from dashboard to analytics", async () => {
@@ -570,6 +651,26 @@ describe("App", () => {
     expect(screen.queryByText("Dépenses mensuelles")).not.toBeInTheDocument();
   });
 
+  it("keeps bottom navigation actions usable after visiting profile", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    fireEvent.click(getLastButtonByName("Ajouter un abonnement"));
+
+    expect(screen.getByRole("heading", { name: "Ajouter un abonnement" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Annuler" }));
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
+    await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
+  });
+
   it("returns from analytics to dashboard with the back button", async () => {
     useAuth.mockReturnValue({
       user,
@@ -713,6 +814,59 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByText("Aucun utilisateur")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Admin Abonnements" }));
     expect(screen.getByText("Aucun abonnement global")).toBeInTheDocument();
+  });
+
+  it("switches admin tabs between users and subscriptions without ghost navigation", async () => {
+    apiRequest.mockImplementation((path) => {
+      if (path.startsWith("/subscriptions")) {
+        return Promise.resolve({ subscriptions: [], totalMonthlyAmount: 0 });
+      }
+
+      if (path === "/categories") {
+        return Promise.resolve({ categories: [] });
+      }
+
+      if (path === "/admin/users") {
+        return Promise.resolve({
+          users: [{ id: "user-2", name: "Jamie", email: "member@test.local", role: "USER", isActive: true, _count: { subscriptions: 2 } }]
+        });
+      }
+
+      if (path === "/admin/subscriptions") {
+        return Promise.resolve({
+          subscriptions: [
+            {
+              id: "admin-sub-1",
+              name: "Netflix Business",
+              status: "ACTIVE",
+              monthlyAmount: 19.99,
+              user: { name: "Jamie", email: "member@test.local" }
+            }
+          ]
+        });
+      }
+
+      return Promise.resolve({});
+    });
+    useAuth.mockReturnValue({
+      user: adminUser,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getAllByRole("button", { name: "Admin" })[0]);
+
+    await waitFor(() => expect(screen.getByText("Gestion utilisateurs")).toBeInTheDocument());
+    expect(screen.getByText("Jamie")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Admin Abonnements" }));
+    await waitFor(() => expect(screen.getByText("Tous les abonnements")).toBeInTheDocument());
+    expect(screen.getByText("Netflix Business")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Admin Utilisateurs" }));
+    await waitFor(() => expect(screen.getByText("Gestion utilisateurs")).toBeInTheDocument());
+    expect(screen.getByText("Jamie")).toBeInTheDocument();
   });
 
   it("shows global admin subscriptions with owner, status and monthly amount", async () => {

@@ -47,17 +47,17 @@ function SubscriptionCard({ t, sub, onEdit, onArchive }) {
 
   return (
     <div className="flex flex-col gap-3.5 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3.5">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
             <i className={`ph-fill ph-receipt ${isArchived || isPaused ? "text-slate-400" : "text-slate-700"} text-2xl`} />
           </div>
-          <div>
-            <h3 className="text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
-            <p className="mt-0.5 text-[13px] font-medium text-slate-500">{sub.category?.name ?? t.categoryPlaceholder} · {cycleLabel}</p>
+          <div className="min-w-0">
+            <h3 className="truncate text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
+            <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{sub.category?.name ?? t.categoryPlaceholder} · {cycleLabel}</p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           <p className={`text-[15px] font-bold leading-tight ${isArchived || isPaused ? "text-slate-400" : "text-slate-900"}`}>{formatMoney(sub.price)}</p>
           <StatusBadge status={sub.status} t={t} />
         </div>
@@ -65,18 +65,20 @@ function SubscriptionCard({ t, sub, onEdit, onArchive }) {
 
       <div className="h-px w-full bg-slate-100" />
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1">
-          <span className={`size-2 rounded-full ${color}`} />
-          <span className={`text-[12px] font-semibold ${isArchived || isPaused ? "font-medium text-slate-500" : "text-slate-700"}`}>{getRenewalLabel(sub, t)}</span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1">
+          <span className={`size-2 shrink-0 rounded-full ${color}`} />
+          <span className={`truncate text-[12px] font-semibold ${isArchived || isPaused ? "font-medium text-slate-500" : "text-slate-700"}`}>{getRenewalLabel(sub, t)}</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           <button aria-label={`Edit ${sub.name}`} onClick={() => onEdit(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95">
             <i className="ph ph-pencil-simple text-[15px]" />
           </button>
-          <button aria-label={`Archive ${sub.name}`} onClick={() => onArchive(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 active:scale-95">
-            <i className="ph ph-archive text-[15px]" />
-          </button>
+          {!isArchived && (
+            <button aria-label={`Archive ${sub.name}`} onClick={() => onArchive(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 active:scale-95">
+              <i className="ph ph-archive text-[15px]" />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -137,12 +139,12 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#F8FAFC] pb-28 text-slate-900 lg:min-h-0 lg:bg-transparent lg:pb-8">
       <main className="flex h-full w-full flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 pb-4 pt-12 shadow-sm lg:static lg:rounded-[24px] lg:px-6 lg:pt-5">
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">{t.subscriptions}</h1>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">{t.manageRecurringCosts}</p>
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 pb-4 pt-12 shadow-sm lg:static lg:rounded-[24px] lg:px-6 lg:pt-5">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold tracking-tight text-slate-900">{t.subscriptions}</h1>
+            <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{t.manageRecurringCosts}</p>
           </div>
-          <button aria-label={t.addSubscription} onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
+          <button aria-label={t.addSubscription} onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
             <i className="ph-bold ph-plus text-lg" />
           </button>
         </header>
@@ -160,7 +162,7 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm transition-all placeholder:text-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none"
               />
             </div>
-            <button type="submit" className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-95">
+            <button type="submit" className="shrink-0 rounded-xl bg-slate-900 px-3.5 py-2.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-95">
               {t.applySearch}
             </button>
           </form>

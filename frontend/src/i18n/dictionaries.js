@@ -45,6 +45,7 @@ export const dictionaries = {
     archived: "Archivés",
     addSubscription: "Ajouter un abonnement",
     addNew: "Ajouter",
+    newSubscription: "Nouvel abonnement",
     editSubscription: "Modifier l'abonnement",
     updateSubscription: "Modifier",
     newSubscriptionDetails: "Saisissez les informations du nouvel abonnement.",
@@ -150,14 +151,14 @@ export const dictionaries = {
     billingSuspended: "Facturation suspendue",
     seeAll: "Voir tout",
     viewAll: "Voir tout",
+    viewAllSubscriptions: "Voir tous les abonnements",
+    closeModal: "Fermer la fenetre",
     noRenewals: "Aucun renouvellement à venir",
     estimatedYearly: "Annuel estimé",
     manageUsers: "Gestion des utilisateurs",
     allSubscriptions: "Tous les abonnements",
     accountStatus: "État du compte",
-    subscriptionCount: "Nombre d'abonnements",
-    demoReady: "Prêt pour la démo",
-    demoSubtitle: "Fonctions à venir."
+    subscriptionCount: "Nombre d'abonnements"
   },
   en: {
     appName: "Subscription Manager",
@@ -205,6 +206,7 @@ export const dictionaries = {
     archived: "Archived",
     addSubscription: "Add subscription",
     addNew: "Add new",
+    newSubscription: "New subscription",
     editSubscription: "Edit subscription",
     updateSubscription: "Edit",
     newSubscriptionDetails: "Enter your new subscription details.",
@@ -310,13 +312,13 @@ export const dictionaries = {
     billingSuspended: "Billing suspended",
     seeAll: "See all",
     viewAll: "View all",
+    viewAllSubscriptions: "View all subscriptions",
+    closeModal: "Close modal",
     noRenewals: "No upcoming renewals",
     estimatedYearly: "Estimated yearly",
     manageUsers: "User management",
     allSubscriptions: "All subscriptions",
     accountStatus: "Account status",
-    subscriptionCount: "Subscription count",
-    demoReady: "Demo ready",
-    demoSubtitle: "Future features."
+    subscriptionCount: "Subscription count"
   }
 };

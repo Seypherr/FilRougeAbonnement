@@ -27,7 +27,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout }) {
             {initials}
           </div>
           <h1 className="mt-5 text-3xl font-black tracking-tight text-slate-900">{t.profile}</h1>
-          <p className="mt-1 text-sm font-semibold text-slate-500">{user.email}</p>
+          <p className="mx-auto mt-1 max-w-full break-all px-2 text-sm font-semibold text-slate-500">{user.email}</p>
           <div className="mt-4 flex justify-center gap-2">
             <span className="rounded-full bg-[#F4F0FF] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#7047EB]">
               {user.role}
@@ -60,7 +60,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout }) {
           <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_6px_24px_-16px_rgba(15,23,42,0.25)]">
             <p className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">{t.preferences}</p>
             <div className="flex items-center justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-black text-slate-900">{t.language}</p>
                 <p className="mt-0.5 text-xs font-semibold text-slate-500">{t.interfaceLanguage}</p>
               </div>

@@ -18,6 +18,15 @@ body {
   color: #7047eb;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid rgba(123, 66, 255, 0.55);
+  outline-offset: 3px;
+}
+
 .input {
   min-height: 3rem;
   width: 100%;

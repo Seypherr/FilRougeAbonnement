@@ -61,20 +61,19 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
           </nav>
         </div>
 
-        <div className="mt-auto grid gap-5">
-          <div className="overflow-hidden rounded-3xl bg-[#7B42FF] p-5 text-white shadow-lg shadow-violet-100">
-            <p className="text-sm font-black">{t.demoReady}</p>
-            <p className="mt-2 text-xs font-semibold leading-relaxed text-violet-100">{t.demoSubtitle}</p>
-          </div>
+        <div className="mt-auto grid gap-4">
           <button
+            type="button"
             onClick={onAddSubscription}
+            aria-label={t.newSubscription}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.98]"
           >
             <Plus size={18} />
-            {t.addNew}
+            {t.newSubscription}
           </button>
           <button
             type="button"
+            aria-label={t.openProfile}
             onClick={() => setTab("profile")}
             className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left transition hover:bg-[#F4F0FF] active:scale-[0.99]"
           >
