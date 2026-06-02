@@ -687,6 +687,37 @@ describe("App", () => {
     });
   });
 
+  it("prevents profile update when fields are invalid", async () => {
+    const updateProfile = vi.fn();
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn(),
+      updateProfile
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText("Nom complet"), { target: { value: " " } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer les changements" }));
+    expect(screen.getByText("Le nom est obligatoire.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Nom complet"), { target: { value: "Ethan" } });
+    fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "bad-email" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer les changements" }));
+    expect(screen.getByText("Veuillez saisir une adresse email valide.")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "ethan@test.local" } });
+    fireEvent.change(screen.getByLabelText("URL de l'avatar"), { target: { value: "ftp://example.com/avatar.png" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer les changements" }));
+    expect(screen.getByText("L'URL de l'avatar doit commencer par http ou https.")).toBeInTheDocument();
+
+    expect(updateProfile).not.toHaveBeenCalled();
+  });
+
   it("opens profile from the user bottom navigation instead of returning to dashboard", async () => {
     useAuth.mockReturnValue({
       user,

@@ -13,7 +13,8 @@ function isValidOptionalUrl(value) {
 }
 
 export function ProfilePage({ t, user, language, setLanguage, logout, updateProfile }) {
-  const [error, setError] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [logoutError, setLogoutError] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -39,27 +40,27 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
 
   const change = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    setError("");
+    setProfileError("");
     setSaved(false);
   };
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
-    setError("");
+    setProfileError("");
     setSaved(false);
 
     if (!form.name.trim()) {
-      setError(t.nameRequired);
+      setProfileError(t.nameRequired);
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-      setError(t.invalidEmail);
+      setProfileError(t.invalidEmail);
       return;
     }
 
     if (!isValidOptionalUrl(form.avatarUrl)) {
-      setError(t.avatarUrlInvalid);
+      setProfileError(t.avatarUrlInvalid);
       return;
     }
 
@@ -73,18 +74,18 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1800);
     } catch (err) {
-      setError(err.message || t.apiErrorMessage);
+      setProfileError(err.message || t.apiErrorMessage);
     } finally {
       setSaving(false);
     }
   };
 
   const handleLogout = async () => {
-    setError("");
+    setLogoutError("");
     try {
       await logout();
     } catch (err) {
-      setError(err.message || t.logoutFailed);
+      setLogoutError(err.message || t.logoutFailed);
     }
   };
 
@@ -115,11 +116,12 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
               <p className="text-xs font-black uppercase tracking-widest text-slate-400">{t.editProfile}</p>
               <p className="mt-1 text-xs font-semibold text-slate-500">{t.profileHelp}</p>
             </div>
-            <form className="grid gap-4" onSubmit={handleProfileSubmit}>
+            <form className="grid gap-4" onSubmit={handleProfileSubmit} noValidate>
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</label>
                 <input
                   aria-label={t.fullName}
+                  aria-invalid={Boolean(profileError === t.nameRequired)}
                   value={form.name}
                   onChange={(event) => change("name", event.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF]"
@@ -129,6 +131,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</label>
                 <input
                   aria-label={t.emailAddress}
+                  aria-invalid={Boolean(profileError === t.invalidEmail)}
                   type="email"
                   value={form.email}
                   onChange={(event) => change("email", event.target.value)}
@@ -139,6 +142,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.avatarUrl}</label>
                 <input
                   aria-label={t.avatarUrl}
+                  aria-invalid={Boolean(profileError === t.avatarUrlInvalid)}
                   type="url"
                   value={form.avatarUrl}
                   onChange={(event) => change("avatarUrl", event.target.value)}
@@ -150,6 +154,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.role}</p>
                 <p className="mt-1 text-base font-black text-slate-900">{user.role}</p>
               </div>
+              {profileError && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{profileError}</p>}
               {saved && <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{t.profileSaved}</p>}
               <button
                 type="submit"
@@ -178,7 +183,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
             </div>
           </div>
 
-          {error && <p className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">{error}</p>}
+          {logoutError && <p className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">{logoutError}</p>}
 
           <button
             type="button"
