@@ -81,6 +81,28 @@ export const me = asyncHandler(async (req, res) => {
   }
 });
 
+export const updateMe = asyncHandler(async (req, res) => {
+  const { email, ...data } = req.body;
+
+  if (email && email !== req.user.email) {
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser && existingUser.id !== req.user.id) {
+      throw new HttpError(409, "Email already used");
+    }
+  }
+
+  const user = await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      ...data,
+      ...(email ? { email } : {})
+    },
+    select: publicUserSelect
+  });
+
+  res.json({ user });
+});
+
 export const logout = asyncHandler(async (_req, res) => {
   clearAuthCookie(res);
   res.status(204).send();

@@ -37,7 +37,53 @@ function Field({ label, children, error }) {
   );
 }
 
-export function SubscriptionModal({ t, subscription, categories, onClose, onSubmit }) {
+function formatSelectedDate(value, language) {
+  if (!value) return "";
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-US", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function RenewalDateInput({ t, language, value, error, onChange }) {
+  const selectedLabel = formatSelectedDate(value, language);
+
+  return (
+    <div className={`grid gap-3 rounded-xl border bg-slate-50 p-3 transition-all sm:grid-cols-[1fr_auto] sm:items-center ${error ? "border-red-200 ring-4 ring-red-50" : "border-slate-200 focus-within:border-slate-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-100"}`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#F4F0FF] text-[#7047EB]">
+          <i className="ph-fill ph-calendar-blank text-lg" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t.dateSelected}</p>
+          <p className="mt-0.5 truncate text-[14px] font-bold capitalize text-slate-900">
+            {selectedLabel || t.noDateSelected}
+          </p>
+        </div>
+      </div>
+      <input
+        aria-label={t.renewalDate}
+        aria-invalid={Boolean(error)}
+        type="date"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onInput={(event) => onChange(event.currentTarget.value)}
+        onBlur={(event) => onChange(event.currentTarget.value)}
+        className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[14px] font-bold text-slate-900 outline-none transition-all hover:border-slate-300 sm:w-[170px]"
+      />
+    </div>
+  );
+}
+
+export function SubscriptionModal({ t, language = "fr", subscription, categories, onClose, onSubmit }) {
   const [form, setForm] = useState(toFormData(subscription ?? emptySubscription));
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -132,7 +178,13 @@ export function SubscriptionModal({ t, subscription, categories, onClose, onSubm
               </select>
             </Field>
             <Field label={t.renewalDate} error={fieldErrors.renewalDate}>
-              <input aria-label={t.renewalDate} aria-invalid={Boolean(fieldErrors.renewalDate)} type="date" value={form.renewalDate} onChange={(event) => change("renewalDate", event.target.value)} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100" />
+              <RenewalDateInput
+                t={t}
+                language={language}
+                value={form.renewalDate}
+                error={fieldErrors.renewalDate}
+                onChange={(value) => change("renewalDate", value)}
+              />
             </Field>
             <Field label={t.paymentMethod}>
               <input aria-label={t.paymentMethod} value={form.paymentMethod} onChange={(event) => change("paymentMethod", event.target.value)} placeholder={t.paymentMethodPlaceholder} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100" />

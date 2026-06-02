@@ -49,6 +49,7 @@ const user = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Test User",
   email: "user@test.local",
+  avatarUrl: null,
   role: "USER",
   isActive: true,
   createdAt: new Date(),
@@ -146,6 +147,120 @@ describe("auth API", () => {
     const response = await request(app).get("/api/auth/me").expect(200);
 
     expect(response.body.user).toBeNull();
+  });
+
+  it("updates the authenticated user's profile fields", async () => {
+    const agent = request.agent(app);
+    const updatedUser = {
+      ...user,
+      name: "Updated User",
+      email: "updated@test.local",
+      avatarUrl: "https://example.com/avatar.png"
+    };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.update.mockResolvedValueOnce(updatedUser);
+
+    const response = await agent
+      .put("/api/auth/me")
+      .send({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        avatarUrl: updatedUser.avatarUrl
+      })
+      .expect(200);
+
+    expect(response.body.user).toEqual(expect.objectContaining({
+      name: updatedUser.name,
+      email: updatedUser.email,
+      avatarUrl: updatedUser.avatarUrl
+    }));
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: {
+          name: updatedUser.name,
+          avatarUrl: updatedUser.avatarUrl,
+          email: updatedUser.email
+        }
+      })
+    );
+  });
+
+  it("rejects a profile update when the email is already used", async () => {
+    const agent = request.agent(app);
+    const otherUser = {
+      ...user,
+      id: "44444444-4444-4444-8444-444444444444",
+      email: "taken@test.local"
+    };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(otherUser);
+
+    await agent
+      .put("/api/auth/me")
+      .send({ email: otherUser.email })
+      .expect(409);
+
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid profile update data", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    const response = await agent
+      .put("/api/auth/me")
+      .send({ email: "not-an-email" })
+      .expect(400);
+
+    expect(response.body.message).toBe("Validation failed");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("does not allow profile updates to change role or active status", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    const response = await agent
+      .put("/api/auth/me")
+      .send({ name: "Still User", role: "ADMIN", isActive: false })
+      .expect(400);
+
+    expect(response.body.message).toBe("Validation failed");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
   it("rejects protected subscription routes without a cookie", async () => {

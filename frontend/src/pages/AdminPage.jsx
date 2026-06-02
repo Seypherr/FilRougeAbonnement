@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { StatePanel } from "../components/StatePanel.jsx";
+import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { formatMoney } from "../utils/subscriptions.js";
 
 function Toggle({ checked, onChange, label, disabled = false }) {
@@ -280,9 +281,7 @@ export function AdminPage({ t, notify, currentUser }) {
                   return (
                     <div key={sub.id} className="grid gap-4 rounded-[20px] border border-slate-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] lg:grid-cols-[minmax(260px,1.4fr)_minmax(180px,0.9fr)_120px_150px_72px] lg:items-center lg:rounded-none lg:border-0 lg:border-b lg:p-6 lg:shadow-none">
                       <div className="flex min-w-0 items-center gap-4">
-                        <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-rose-50">
-                          <i className="ph-fill ph-film-strip text-2xl text-rose-500" />
-                        </div>
+                        <SubscriptionLogo name={sub.name} className="size-12 rounded-[14px]" muted={sub.status !== "ACTIVE"} />
                         <div className="min-w-0">
                           <h3 className="truncate text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
                         </div>

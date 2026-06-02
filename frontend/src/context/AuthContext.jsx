@@ -30,6 +30,11 @@ export function AuthProvider({ children }) {
         await apiRequest("/auth/logout", { method: "POST" });
         setUser(null);
       },
+      updateProfile: async (payload) => {
+        const data = await apiRequest("/auth/me", { method: "PUT", body: payload });
+        setUser(data.user);
+        return data.user;
+      },
       refreshUser: async () => {
         const data = await apiRequest("/auth/me");
         setUser(data.user);

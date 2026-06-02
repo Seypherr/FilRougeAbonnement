@@ -2,6 +2,7 @@ import { useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionModal } from "../components/SubscriptionModal.jsx";
+import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
 
 const filterOptions = [
@@ -49,9 +50,7 @@ function SubscriptionCard({ t, sub, onEdit, onArchive }) {
     <div className="flex flex-col gap-3.5 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3.5">
-          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
-            <i className={`ph-fill ph-receipt ${isArchived || isPaused ? "text-slate-400" : "text-slate-700"} text-2xl`} />
-          </div>
+          <SubscriptionLogo name={sub.name} className="size-11 rounded-xl" muted={isArchived || isPaused} />
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
             <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{sub.category?.name ?? t.categoryPlaceholder} · {cycleLabel}</p>
@@ -85,7 +84,7 @@ function SubscriptionCard({ t, sub, onEdit, onArchive }) {
   );
 }
 
-export function SubscriptionsPage({ t, subscriptions, categories, loading, error, load, notify, modalState, setModalState }) {
+export function SubscriptionsPage({ t, language, subscriptions, categories, loading, error, load, notify, modalState, setModalState }) {
   const [filters, setFilters] = useState({ search: "", status: "" });
   const [appliedQuery, setAppliedQuery] = useState("");
 
@@ -211,6 +210,7 @@ export function SubscriptionsPage({ t, subscriptions, categories, loading, error
       {modalState.open && (
         <SubscriptionModal
           t={t}
+          language={language}
           subscription={modalState.subscription}
           categories={categories}
           onClose={() => setModalState({ open: false, subscription: null })}

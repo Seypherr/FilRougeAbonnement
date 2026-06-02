@@ -1,4 +1,6 @@
 import { StatePanel } from "../components/StatePanel.jsx";
+import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
+import { UserAvatar } from "../components/UserAvatar.jsx";
 import { formatMoney, getSubscriptionStats } from "../utils/subscriptions.js";
 
 function getDaysUntil(dateValue) {
@@ -15,25 +17,11 @@ function getDueLabel(dateValue, t) {
   return { text: t.inDays.replace("{count}", diff), urgent: diff <= 7 };
 }
 
-function getServiceStyle(index) {
-  const styles = [
-    { icon: "ph-film-strip", iconColor: "text-rose-500", bgColor: "bg-rose-50" },
-    { icon: "ph-music-notes", iconColor: "text-emerald-500", bgColor: "bg-emerald-50" },
-    { icon: "ph-pen-nib", iconColor: "text-blue-500", bgColor: "bg-blue-50" },
-    { icon: "ph-figma-logo", iconColor: "text-fuchsia-500", bgColor: "bg-fuchsia-50" },
-    { icon: "ph-credit-card", iconColor: "text-violet-500", bgColor: "bg-violet-50" }
-  ];
-  return styles[index % styles.length];
-}
-
 function RenewalCard({ t, item, index, desktop = false }) {
-  const style = getServiceStyle(index);
   const due = getDueLabel(item.renewalDate, t);
   return (
     <div className={`flex items-center gap-4 bg-white transition-all ${desktop ? "rounded-[20px] px-6 py-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]" : "rounded-[20px] p-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]"}`}>
-      <div className={`${desktop ? "size-10" : "size-[52px]"} flex shrink-0 items-center justify-center rounded-full ${style.bgColor}`}>
-        <i className={`ph-fill ${style.icon} ${desktop ? "text-xl" : "text-2xl"} ${style.iconColor}`} />
-      </div>
+      <SubscriptionLogo name={item.name} className={`${desktop ? "size-10" : "size-[52px]"} rounded-full`} />
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-[15px] font-bold leading-tight text-slate-800">{item.name}</h3>
         <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? "Student Plan"}</p>
@@ -63,7 +51,6 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
     })
     .reduce((sum, item) => sum + Number(item.monthlyAmount ?? 0), 0);
   const displayName = user?.name ?? "User";
-  const avatarName = encodeURIComponent(displayName);
 
   return (
     <>
@@ -82,7 +69,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
                 className="flex size-11 items-center justify-center overflow-hidden rounded-[14px] border border-white/30 bg-transparent text-sm font-bold text-white shadow-sm transition hover:bg-white/10"
                 onClick={() => setTab("profile")}
               >
-                <img src={`https://ui-avatars.com/api/?name=${avatarName}&background=E0E7FF&color=4338CA&bold=true`} alt="Profile" className="size-full object-cover" />
+                <UserAvatar user={user} className="size-full rounded-[14px]" />
               </button>
             </div>
           </header>

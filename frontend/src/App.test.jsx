@@ -362,6 +362,23 @@ describe("App", () => {
     expect(screen.getByText("Prix")).toBeInTheDocument();
   });
 
+  it("shows a readable selected renewal date in the subscription modal", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("$22.00").length).toBeGreaterThan(0));
+    fireEvent.click(getLastButtonByName("Ajouter un abonnement"));
+    fireEvent.change(screen.getByLabelText("Renouvellement"), { target: { value: "2026-06-15" } });
+
+    expect(screen.getByText("Date sélectionnée")).toBeInTheDocument();
+    expect(screen.getByText("15 juin 2026")).toBeInTheDocument();
+  });
+
   it("closes the add modal from the cancel action", async () => {
     useAuth.mockReturnValue({
       user,
@@ -570,6 +587,7 @@ describe("App", () => {
     expect(screen.getByText("Le nom est obligatoire.")).toBeInTheDocument();
     expect(screen.getByText("Le prix doit être supérieur à 0.")).toBeInTheDocument();
     expect(screen.getByText("La date de renouvellement est obligatoire.")).toBeInTheDocument();
+    expect(screen.getByText("Aucune date sélectionnée")).toBeInTheDocument();
     expect(screen.getByText("Corrigez les champs indiqués.")).toBeInTheDocument();
     expect(apiRequest.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(postCallsBefore);
   });
@@ -635,6 +653,38 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Déconnexion" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+  });
+
+  it("updates profile name, email and avatar URL", async () => {
+    const updateProfile = vi.fn().mockResolvedValue({
+      ...user,
+      name: "Ethan Updated",
+      email: "ethan.updated@test.local",
+      avatarUrl: "https://example.com/avatar.png"
+    });
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn(),
+      updateProfile
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Nom complet"), { target: { value: "Ethan Updated" } });
+    fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "Ethan.Updated@Test.Local" } });
+    fireEvent.change(screen.getByLabelText("URL de l'avatar"), { target: { value: "https://example.com/avatar.png" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer les changements" }));
+
+    await waitFor(() => {
+      expect(updateProfile).toHaveBeenCalledWith({
+        name: "Ethan Updated",
+        email: "ethan.updated@test.local",
+        avatarUrl: "https://example.com/avatar.png"
+      });
+    });
   });
 
   it("opens profile from the user bottom navigation instead of returning to dashboard", async () => {

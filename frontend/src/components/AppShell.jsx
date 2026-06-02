@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BarChart3, CreditCard, Grid2X2, Home, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
 import { Toast } from "./Toast.jsx";
+import { UserAvatar } from "./UserAvatar.jsx";
 
 const navIconMap = {
   dashboard: Home,
@@ -77,7 +78,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
             onClick={() => setTab("profile")}
             className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left transition hover:bg-[#F4F0FF] active:scale-[0.99]"
           >
-            <div className="grid size-10 place-items-center rounded-full bg-[#F4F0FF] text-sm font-black text-[#7B42FF]">{user.name?.[0] ?? "U"}</div>
+            <UserAvatar user={user} className="size-10" />
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{user.name}</p>
               <p className="truncate text-xs font-semibold text-slate-500">{user.email}</p>

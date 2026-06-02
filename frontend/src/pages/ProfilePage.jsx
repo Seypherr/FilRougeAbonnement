@@ -1,14 +1,83 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { UserAvatar } from "../components/UserAvatar.jsx";
 
-export function ProfilePage({ t, user, language, setLanguage, logout }) {
+function isValidOptionalUrl(value) {
+  if (!value.trim()) return true;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function ProfilePage({ t, user, language, setLanguage, logout, updateProfile }) {
   const [error, setError] = useState("");
-  const initials = user.name
-    ?.split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "U";
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: user.name ?? "",
+    email: user.email ?? "",
+    avatarUrl: user.avatarUrl ?? ""
+  });
   const isActive = user.isActive ?? true;
+  const previewUser = {
+    ...user,
+    name: form.name || user.name,
+    email: form.email || user.email,
+    avatarUrl: form.avatarUrl || null
+  };
+
+  useEffect(() => {
+    setForm({
+      name: user.name ?? "",
+      email: user.email ?? "",
+      avatarUrl: user.avatarUrl ?? ""
+    });
+  }, [user.name, user.email, user.avatarUrl]);
+
+  const change = (field, value) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setError("");
+    setSaved(false);
+  };
+
+  const handleProfileSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setSaved(false);
+
+    if (!form.name.trim()) {
+      setError(t.nameRequired);
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError(t.invalidEmail);
+      return;
+    }
+
+    if (!isValidOptionalUrl(form.avatarUrl)) {
+      setError(t.avatarUrlInvalid);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await updateProfile({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        avatarUrl: form.avatarUrl.trim() || null
+      });
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1800);
+    } catch (err) {
+      setError(err.message || t.apiErrorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     setError("");
@@ -23,9 +92,11 @@ export function ProfilePage({ t, user, language, setLanguage, logout }) {
     <div className="min-h-screen bg-[#F8F9FB] px-5 pb-28 pt-12 text-slate-900 lg:min-h-0 lg:px-0 lg:pb-8 lg:pt-0">
       <section className="mx-auto max-w-xl">
         <header className="mb-8 text-center">
-          <div className="mx-auto grid size-28 place-items-center rounded-full border-4 border-white bg-[#7047EB] text-4xl font-black text-white shadow-[0_14px_30px_-12px_rgba(112,71,235,0.65)]">
-            {initials}
-          </div>
+          <UserAvatar
+            user={previewUser}
+            className="mx-auto size-28 border-4 border-white bg-[#7047EB] text-white shadow-[0_14px_30px_-12px_rgba(112,71,235,0.65)]"
+            textClassName="text-4xl"
+          />
           <h1 className="mt-5 text-3xl font-black tracking-tight text-slate-900">{t.profile}</h1>
           <p className="mx-auto mt-1 max-w-full break-all px-2 text-sm font-semibold text-slate-500">{user.email}</p>
           <div className="mt-4 flex justify-center gap-2">
@@ -40,21 +111,54 @@ export function ProfilePage({ t, user, language, setLanguage, logout }) {
 
         <section className="grid gap-4">
           <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_6px_24px_-16px_rgba(15,23,42,0.25)]">
-            <p className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">{t.account}</p>
-            <div className="grid gap-4">
+            <div className="mb-4">
+              <p className="text-xs font-black uppercase tracking-widest text-slate-400">{t.editProfile}</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">{t.profileHelp}</p>
+            </div>
+            <form className="grid gap-4" onSubmit={handleProfileSubmit}>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</p>
-                <p className="mt-1 text-base font-black text-slate-900">{user.name}</p>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</label>
+                <input
+                  aria-label={t.fullName}
+                  value={form.name}
+                  onChange={(event) => change("name", event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF]"
+                />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</p>
-                <p className="mt-1 break-all text-base font-black text-slate-900">{user.email}</p>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</label>
+                <input
+                  aria-label={t.emailAddress}
+                  type="email"
+                  value={form.email}
+                  onChange={(event) => change("email", event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF]"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.avatarUrl}</label>
+                <input
+                  aria-label={t.avatarUrl}
+                  type="url"
+                  value={form.avatarUrl}
+                  onChange={(event) => change("avatarUrl", event.target.value)}
+                  placeholder={t.avatarUrlPlaceholder}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF]"
+                />
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.role}</p>
                 <p className="mt-1 text-base font-black text-slate-900">{user.role}</p>
               </div>
-            </div>
+              {saved && <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{t.profileSaved}</p>}
+              <button
+                type="submit"
+                disabled={saving}
+                className="rounded-[18px] bg-[#7047EB] px-5 py-4 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {saving ? t.loading : t.saveChanges}
+              </button>
+            </form>
           </div>
 
           <div className="rounded-[24px] border border-slate-100 bg-white p-5 shadow-[0_6px_24px_-16px_rgba(15,23,42,0.25)]">

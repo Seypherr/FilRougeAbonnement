@@ -19,7 +19,7 @@ export function App() {
   const [toast, setToast] = useState(null);
   const [modalState, setModalState] = useState({ open: false, subscription: null });
   const t = dictionaries[language];
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, updateProfile } = useAuth();
   const subscriptionState = useSubscriptions("", Boolean(user));
 
   const notify = (message, type = "success") => {
@@ -101,6 +101,7 @@ export function App() {
       {tab === "subscriptions" && (
         <SubscriptionsPage
           t={t}
+          language={language}
           notify={notify}
           modalState={modalState}
           setModalState={setModalState}
@@ -124,12 +125,14 @@ export function App() {
           language={language}
           setLanguage={setLanguage}
           logout={logout}
+          updateProfile={updateProfile}
         />
       )}
       {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} notify={notify} currentUser={user} />}
       {modalState.open && tab !== "subscriptions" && (
         <SubscriptionModal
           t={t}
+          language={language}
           subscription={modalState.subscription}
           categories={subscriptionState.categories}
           onClose={() => setModalState({ open: false, subscription: null })}

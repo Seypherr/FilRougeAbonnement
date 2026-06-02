@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { StatePanel } from "../components/StatePanel.jsx";
+import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { formatMoney, getSubscriptionStats } from "../utils/subscriptions.js";
 
 const colors = ["#8255FF", "#0055FF", "#00C48C", "#CBD5E1", "#F59E0B"];
@@ -148,9 +149,7 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
           ) : (
             stats.topCosts.map((item, index) => (
               <div key={item.id} className="flex items-center gap-4 rounded-[20px] bg-white p-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]">
-                <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-[#F4F0FF] text-[#8255FF]">
-                  <span className="font-bold">{index + 1}</span>
-                </div>
+                <SubscriptionLogo name={item.name} className="size-12 rounded-full" rank={index + 1} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-bold text-slate-800">{item.name}</p>
                   <p className="truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? t.other}</p>
