@@ -40,7 +40,7 @@ function StatusBadge({ status, t }) {
   return <span className="rounded border border-slate-200/60 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-slate-500">{t.archived}</span>;
 }
 
-function SubscriptionCard({ t, sub, onEdit, onArchive }) {
+function SubscriptionCard({ t, sub, onEdit, onArchive, onDeletePermanent }) {
   const isArchived = sub.status === "ARCHIVED";
   const isPaused = sub.status === "INACTIVE";
   const color = isArchived || isPaused ? "bg-slate-300" : "bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.2)]";
@@ -76,6 +76,11 @@ function SubscriptionCard({ t, sub, onEdit, onArchive }) {
           {!isArchived && (
             <button aria-label={`Archive ${sub.name}`} onClick={() => onArchive(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 active:scale-95">
               <i className="ph ph-archive text-[15px]" />
+            </button>
+          )}
+          {isArchived && (
+            <button aria-label={`${t.deleteSubscription} ${sub.name}`} onClick={() => onDeletePermanent(sub)} className="flex size-8 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 active:scale-95">
+              <i className="ph ph-trash text-[15px]" />
             </button>
           )}
         </div>
@@ -123,6 +128,17 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
     try {
       await apiRequest(`/subscriptions/${subscription.id}`, { method: "DELETE" });
       notify(t.subscriptionArchived);
+      applyFilters(filters, { force: true });
+    } catch (err) {
+      notify(err.message, "error");
+    }
+  };
+
+  const deletePermanent = async (subscription) => {
+    if (!window.confirm(t.confirmDeleteArchivedSubscription)) return;
+    try {
+      await apiRequest(`/subscriptions/${subscription.id}/permanent`, { method: "DELETE" });
+      notify(t.subscriptionDeleted);
       applyFilters(filters, { force: true });
     } catch (err) {
       notify(err.message, "error");
@@ -200,7 +216,7 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
           ) : (
             <div className="grid gap-3.5 lg:grid-cols-2">
               {subscriptions.map((subscription) => (
-                <SubscriptionCard key={subscription.id} t={t} sub={subscription} onEdit={(sub) => setModalState({ open: true, subscription: sub })} onArchive={archive} />
+                <SubscriptionCard key={subscription.id} t={t} sub={subscription} onEdit={(sub) => setModalState({ open: true, subscription: sub })} onArchive={archive} onDeletePermanent={deletePermanent} />
               ))}
             </div>
           )}

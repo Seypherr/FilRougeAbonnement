@@ -74,7 +74,8 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1800);
     } catch (err) {
-      setProfileError(err.message || t.apiErrorMessage);
+      const message = err.message === "Email already used" ? t.emailAlreadyUsed : err.message;
+      setProfileError(message || t.apiErrorMessage);
     } finally {
       setSaving(false);
     }
@@ -99,7 +100,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
             textClassName="text-4xl"
           />
           <h1 className="mt-5 text-3xl font-black tracking-tight text-slate-900">{t.profile}</h1>
-          <p className="mx-auto mt-1 max-w-full break-all px-2 text-sm font-semibold text-slate-500">{user.email}</p>
+          <p className="mx-auto mt-1 max-w-full break-all px-2 text-sm font-semibold text-slate-500">{previewUser.email}</p>
           <div className="mt-4 flex justify-center gap-2">
             <span className="rounded-full bg-[#F4F0FF] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#7047EB]">
               {user.role}
@@ -153,9 +154,10 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
               <div>
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.role}</p>
                 <p className="mt-1 text-base font-black text-slate-900">{user.role}</p>
+                <p className="mt-1 text-xs font-semibold text-slate-500">{t.profileProtectedFields}</p>
               </div>
-              {profileError && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{profileError}</p>}
-              {saved && <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{t.profileSaved}</p>}
+              {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{profileError}</p>}
+              {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{t.profileSaved}</p>}
               <button
                 type="submit"
                 disabled={saving}

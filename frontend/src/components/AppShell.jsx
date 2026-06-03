@@ -13,13 +13,22 @@ const navIconMap = {
 
 export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAddSubscription, logout }) {
   const [logoutError, setLogoutError] = useState("");
-  const mobileItems = [
-    ["dashboard", Home],
-    ["subscriptions", Grid2X2],
-    ["add", Plus],
-    ["statistics", PieChart],
-    [user.role === "ADMIN" ? "admin" : "profile", user.role === "ADMIN" ? Shield : UserRound]
-  ];
+  const mobileItems = user.role === "ADMIN"
+    ? [
+        ["dashboard", Home],
+        ["subscriptions", Grid2X2],
+        ["add", Plus],
+        ["statistics", PieChart],
+        ["admin", Shield],
+        ["profile", UserRound]
+      ]
+    : [
+        ["dashboard", Home],
+        ["subscriptions", Grid2X2],
+        ["add", Plus],
+        ["statistics", PieChart],
+        ["profile", UserRound]
+      ];
 
   const handleSidebarLogout = async () => {
     setLogoutError("");

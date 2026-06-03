@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { getSubscriptionInitial, getSubscriptionLogo } from "../utils/subscriptionLogos.js";
+import { getSubscriptionLogo } from "../utils/subscriptionLogos.js";
 
 export function SubscriptionLogo({ name, className = "size-12 rounded-full", muted = false, rank = null }) {
   const logo = useMemo(() => getSubscriptionLogo(name), [name]);
   const [source, setSource] = useState("logo");
-  const showImage = logo && source !== "fallback";
-  const initial = getSubscriptionInitial(name);
+  const showImage = logo?.hasLogo && source !== "fallback";
+  const initial = logo?.initials ?? "?";
   const imageSrc = source === "favicon" ? logo?.fallbackUrl : logo?.url;
 
   useEffect(() => {
@@ -28,7 +28,11 @@ export function SubscriptionLogo({ name, className = "size-12 rounded-full", mut
           onError={handleImageError}
         />
       ) : (
-        <span className="text-sm font-black text-[#6C51FF]" aria-label={`${name} fallback logo`}>
+        <span
+          className="grid size-full place-items-center text-sm font-black"
+          style={logo?.style}
+          aria-label={`${name} fallback logo`}
+        >
           {initial}
         </span>
       )}

@@ -116,6 +116,29 @@ export const archiveMySubscription = asyncHandler(async (req, res) => {
   res.json({ subscription: serializeSubscription(subscription) });
 });
 
+export const deleteMyArchivedSubscription = asyncHandler(async (req, res) => {
+  const existingSubscription = await prisma.subscription.findFirst({
+    where: {
+      id: req.params.id,
+      userId: req.user.id
+    }
+  });
+
+  if (!existingSubscription) {
+    throw new HttpError(404, "Subscription not found");
+  }
+
+  if (existingSubscription.status !== "ARCHIVED") {
+    throw new HttpError(400, "Only archived subscriptions can be permanently deleted");
+  }
+
+  await prisma.subscription.delete({
+    where: { id: req.params.id }
+  });
+
+  res.status(204).send();
+});
+
 export const listAllSubscriptions = asyncHandler(async (req, res) => {
   const filters = req.validatedQuery ?? req.query;
   const subscriptions = await prisma.subscription.findMany({

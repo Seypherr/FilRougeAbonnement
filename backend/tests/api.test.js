@@ -424,6 +424,73 @@ describe("subscription API", () => {
     );
   });
 
+  it("permanently deletes an archived subscription owned by the authenticated user", async () => {
+    const agent = request.agent(app);
+    const archivedSubscription = { ...subscription, status: "ARCHIVED" };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(archivedSubscription);
+    mockPrisma.subscription.delete.mockResolvedValueOnce(archivedSubscription);
+
+    await agent.delete(`/api/subscriptions/${subscription.id}/permanent`).expect(204);
+
+    expect(mockPrisma.subscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: subscription.id,
+          userId: user.id
+        }
+      })
+    );
+    expect(mockPrisma.subscription.delete).toHaveBeenCalledWith({
+      where: { id: subscription.id }
+    });
+  });
+
+  it("rejects permanent deletion when the subscription is not archived", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(subscription);
+
+    const response = await agent.delete(`/api/subscriptions/${subscription.id}/permanent`).expect(400);
+
+    expect(response.body.message).toBe("Only archived subscriptions can be permanently deleted");
+    expect(mockPrisma.subscription.delete).not.toHaveBeenCalled();
+  });
+
+  it("does not allow permanent deletion of another user's subscription", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(null);
+
+    await agent.delete(`/api/subscriptions/${subscription.id}/permanent`).expect(404);
+
+    expect(mockPrisma.subscription.delete).not.toHaveBeenCalled();
+  });
+
   it("does not allow a user to update another user's subscription", async () => {
     const agent = request.agent(app);
     mockPrisma.user.findUnique.mockResolvedValueOnce(null);

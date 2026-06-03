@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   archiveMySubscription,
   createSubscription,
+  deleteMyArchivedSubscription,
   getMySubscription,
   listMySubscriptions,
   updateMySubscription
@@ -22,4 +23,5 @@ subscriptionRouter.get("/", validate(subscriptionListSchema), listMySubscription
 subscriptionRouter.post("/", validate(subscriptionCreateSchema), createSubscription);
 subscriptionRouter.get("/:id", validate(subscriptionParamsSchema), getMySubscription);
 subscriptionRouter.put("/:id", validate(subscriptionUpdateSchema), updateMySubscription);
+subscriptionRouter.delete("/:id/permanent", validate(subscriptionParamsSchema), deleteMyArchivedSubscription);
 subscriptionRouter.delete("/:id", validate(subscriptionParamsSchema), archiveMySubscription);

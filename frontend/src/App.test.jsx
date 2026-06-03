@@ -379,6 +379,30 @@ describe("App", () => {
     expect(screen.getByText("15 juin 2026")).toBeInTheDocument();
   });
 
+  it("suggests known services and fills the canonical service name", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("$22.00").length).toBeGreaterThan(0));
+    fireEvent.click(getLastButtonByName("Ajouter un abonnement"));
+
+    const nameInput = screen.getByLabelText("Nom");
+    fireEvent.focus(nameInput);
+    fireEvent.change(nameInput, { target: { value: "oner" } });
+
+    expect(screen.getByRole("button", { name: "Choisir Oney" })).toBeInTheDocument();
+    expect(screen.getByAltText("Oney logo")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Choisir Oney" }));
+
+    expect(nameInput).toHaveValue("Oney");
+  });
+
   it("closes the add modal from the cancel action", async () => {
     useAuth.mockReturnValue({
       user,
@@ -416,6 +440,29 @@ describe("App", () => {
     expect(screen.getByLabelText("Renouvellement")).toHaveValue("2026-06-05");
   });
 
+  it("selects a renewal date from the mini calendar", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
+
+    await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Netflix" }));
+
+    expect(screen.getAllByText(/juin 2026/i).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Mois suivant" }));
+    expect(screen.getAllByText(/juillet 2026/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sélectionner le 15 juillet 2026" }));
+
+    expect(screen.getByLabelText("Renouvellement")).toHaveValue("2026-07-15");
+    expect(screen.getByText("15 juillet 2026")).toBeInTheDocument();
+  });
+
   it("does not offer archive again for an already archived subscription", async () => {
     useAuth.mockReturnValue({
       user,
@@ -428,7 +475,26 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getByText("Archived Cloud")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Archive Archived Cloud" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Supprimer l'abonnement Archived Cloud" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Archive Netflix" })).toBeInTheDocument();
+  });
+
+  it("permanently deletes an archived subscription with confirmation", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
+
+    await waitFor(() => expect(screen.getByText("Archived Cloud")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Supprimer l'abonnement Archived Cloud" }));
+
+    await waitFor(() => expect(window.confirm).toHaveBeenCalledWith("Supprimer définitivement cet abonnement archivé ? Cette action est irréversible."));
+    expect(apiRequest).toHaveBeenCalledWith("/subscriptions/sub-3/permanent", expect.objectContaining({ method: "DELETE" }));
   });
 
   it("closes the add subscription modal when navigating from dashboard to analytics", async () => {
@@ -687,6 +753,44 @@ describe("App", () => {
     });
   });
 
+  it("previews profile email and avatar before saving", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn(),
+      updateProfile: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "preview@test.local" } });
+    fireEvent.change(screen.getByLabelText("URL de l'avatar"), { target: { value: "https://example.com/avatar.png" } });
+
+    expect(screen.getByText("preview@test.local")).toBeInTheDocument();
+    expect(screen.getByAltText("Profile avatar")).toHaveAttribute("src", "https://example.com/avatar.png");
+  });
+
+  it("shows a clear profile error when email is already used", async () => {
+    const updateProfile = vi.fn().mockRejectedValue(new Error("Email already used"));
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn(),
+      updateProfile
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "taken@test.local" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer les changements" }));
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Cette adresse email est déjà utilisée."));
+  });
+
   it("prevents profile update when fields are invalid", async () => {
     const updateProfile = vi.fn();
     useAuth.mockReturnValue({
@@ -730,6 +834,22 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
     expect(screen.queryByText("Dépenses mensuelles")).not.toBeInTheDocument();
+  });
+
+  it("opens profile from the admin bottom navigation while keeping admin available", async () => {
+    useAuth.mockReturnValue({
+      user: adminUser,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    expect(screen.getAllByRole("button", { name: "Admin" }).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    expect(screen.getByText("Le rôle et le statut du compte ne peuvent pas être modifiés depuis le profil.")).toBeInTheDocument();
   });
 
   it("keeps bottom navigation actions usable after visiting profile", async () => {

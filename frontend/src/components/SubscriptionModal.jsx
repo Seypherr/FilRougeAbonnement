@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { SubscriptionLogo } from "./SubscriptionLogo.jsx";
+import { getServiceSuggestions } from "../utils/subscriptionLogos.js";
 import { cycleLabels, emptySubscription, toApiPayload, toFormData } from "../utils/subscriptions.js";
 
 const validBillingCycles = Object.keys(cycleLabels);
@@ -37,6 +39,54 @@ function Field({ label, children, error }) {
   );
 }
 
+function ServiceNameInput({ t, value, error, onChange }) {
+  const [focused, setFocused] = useState(false);
+  const suggestions = getServiceSuggestions(value, 6);
+  const showSuggestions = focused && suggestions.length > 0;
+
+  const selectSuggestion = (serviceName) => {
+    onChange(serviceName);
+    setFocused(false);
+  };
+
+  return (
+    <div className="relative">
+      <input
+        aria-label={t.name}
+        aria-invalid={Boolean(error)}
+        aria-autocomplete="list"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => window.setTimeout(() => setFocused(false), 120)}
+        placeholder="e.g. Spotify"
+        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
+      />
+      {showSuggestions && (
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.45)]">
+          <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.serviceSuggestions}</p>
+          <div className="grid gap-1">
+            {suggestions.map((service) => (
+              <button
+                key={service.name}
+                type="button"
+                aria-label={`${t.chooseService} ${service.name}`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => selectSuggestion(service.name)}
+                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-slate-50 active:scale-[0.99]"
+              >
+                <SubscriptionLogo name={service.name} className="size-8 rounded-lg" />
+                <span className="min-w-0 flex-1 truncate text-sm font-black text-slate-800">{service.name}</span>
+                <span className="hidden truncate text-[11px] font-semibold text-slate-400 sm:block">{service.domain}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function formatSelectedDate(value, language) {
   if (!value) return "";
   const [year, month, day] = value.split("-").map(Number);
@@ -53,11 +103,65 @@ function formatSelectedDate(value, language) {
   }).format(date);
 }
 
+function parseDateValue(value) {
+  if (!value) return null;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthLabel(date, language) {
+  return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-US", {
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function addMonths(date, amount) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function getCalendarDays(monthDate) {
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const mondayOffset = (firstDay.getDay() + 6) % 7;
+  const start = new Date(firstDay);
+  start.setDate(firstDay.getDate() - mondayOffset);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return {
+      date,
+      value: formatDateValue(date),
+      inCurrentMonth: date.getMonth() === monthDate.getMonth()
+    };
+  });
+}
+
 function RenewalDateInput({ t, language, value, error, onChange }) {
   const selectedLabel = formatSelectedDate(value, language);
+  const selectedDate = parseDateValue(value);
+  const today = new Date();
+  const todayValue = formatDateValue(today);
+  const [visibleMonth, setVisibleMonth] = useState(() => selectedDate ?? today);
+  const calendarDays = getCalendarDays(visibleMonth);
+  const weekDays = language === "fr" ? ["L", "M", "M", "J", "V", "S", "D"] : ["M", "T", "W", "T", "F", "S", "S"];
+
+  useEffect(() => {
+    if (selectedDate) {
+      setVisibleMonth(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+    }
+  }, [value]);
 
   return (
-    <div className={`grid gap-3 rounded-xl border bg-slate-50 p-3 transition-all sm:grid-cols-[1fr_auto] sm:items-center ${error ? "border-red-200 ring-4 ring-red-50" : "border-slate-200 focus-within:border-slate-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-100"}`}>
+    <div className={`grid gap-4 rounded-[18px] border bg-slate-50 p-3.5 transition-all ${error ? "border-red-200 ring-4 ring-red-50" : "border-slate-200 focus-within:border-slate-400 focus-within:bg-white focus-within:ring-4 focus-within:ring-slate-100"}`}>
       <div className="flex min-w-0 items-center gap-3">
         <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#F4F0FF] text-[#7047EB]">
           <i className="ph-fill ph-calendar-blank text-lg" />
@@ -69,6 +173,68 @@ function RenewalDateInput({ t, language, value, error, onChange }) {
           </p>
         </div>
       </div>
+
+      <div className="rounded-[16px] border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            aria-label={t.previousMonth}
+            onClick={() => setVisibleMonth((current) => addMonths(current, -1))}
+            className="grid size-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-[#7047EB]/30 hover:bg-[#F4F0FF] hover:text-[#7047EB] active:scale-95"
+          >
+            <i className="ph-bold ph-caret-left text-sm" />
+          </button>
+          <p className="min-w-0 flex-1 truncate text-center text-[14px] font-black capitalize text-slate-900">
+            {getMonthLabel(visibleMonth, language)}
+          </p>
+          <button
+            type="button"
+            aria-label={t.nextMonth}
+            onClick={() => setVisibleMonth((current) => addMonths(current, 1))}
+            className="grid size-9 place-items-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-[#7047EB]/30 hover:bg-[#F4F0FF] hover:text-[#7047EB] active:scale-95"
+          >
+            <i className="ph-bold ph-caret-right text-sm" />
+          </button>
+        </div>
+
+        <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] font-black uppercase tracking-wider text-slate-400">
+          {weekDays.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {calendarDays.map((day) => {
+            const isSelected = value === day.value;
+            const isToday = day.value === todayValue;
+            return (
+              <button
+                key={day.value}
+                type="button"
+                aria-label={`${t.selectDate} ${formatSelectedDate(day.value, language)}`}
+                aria-pressed={isSelected}
+                onClick={() => onChange(day.value)}
+                className={`grid aspect-square min-h-9 place-items-center rounded-xl text-[12px] font-black transition active:scale-95 ${
+                  isSelected
+                    ? "bg-[#7047EB] text-white shadow-[0_8px_18px_-10px_rgba(112,71,235,0.9)]"
+                    : isToday
+                      ? "bg-[#F4F0FF] text-[#7047EB] ring-1 ring-[#7047EB]/20"
+                      : day.inCurrentMonth
+                        ? "text-slate-700 hover:bg-slate-100"
+                        : "text-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                {day.date.getDate()}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange(todayValue)}
+          className="mt-3 w-full rounded-xl bg-slate-100 px-3 py-2 text-[12px] font-black text-slate-600 transition hover:bg-[#F4F0FF] hover:text-[#7047EB] active:scale-[0.98]"
+        >
+          {t.today}
+        </button>
+      </div>
+
       <input
         aria-label={t.renewalDate}
         aria-invalid={Boolean(error)}
@@ -77,7 +243,7 @@ function RenewalDateInput({ t, language, value, error, onChange }) {
         onChange={(event) => onChange(event.target.value)}
         onInput={(event) => onChange(event.currentTarget.value)}
         onBlur={(event) => onChange(event.currentTarget.value)}
-        className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[14px] font-bold text-slate-900 outline-none transition-all hover:border-slate-300 sm:w-[170px]"
+        className="sr-only"
       />
     </div>
   );
@@ -155,7 +321,12 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t.name} error={fieldErrors.name}>
-              <input aria-label={t.name} aria-invalid={Boolean(fieldErrors.name)} value={form.name} onChange={(event) => change("name", event.target.value)} placeholder="e.g. Spotify" className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100" />
+              <ServiceNameInput
+                t={t}
+                value={form.name}
+                error={fieldErrors.name}
+                onChange={(value) => change("name", value)}
+              />
             </Field>
             <Field label={t.price} error={fieldErrors.price}>
               <div className="relative">
