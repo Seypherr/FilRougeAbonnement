@@ -33,13 +33,15 @@ async function main() {
       name,
       password: hashedPassword,
       role: "ADMIN",
-      isActive: true
+      isActive: true,
+      emailVerified: true
     },
     create: {
       email,
       name,
       password: hashedPassword,
-      role: "ADMIN"
+      role: "ADMIN",
+      emailVerified: true
     }
   });
 

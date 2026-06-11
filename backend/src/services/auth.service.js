@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 
@@ -7,6 +8,7 @@ export const publicUserSelect = {
   name: true,
   email: true,
   avatarUrl: true,
+  emailVerified: true,
   role: true,
   isActive: true,
   createdAt: true,
@@ -16,6 +18,12 @@ export const publicUserSelect = {
 export const hashPassword = (password) => bcrypt.hash(password, 12);
 
 export const verifyPassword = (password, hash) => bcrypt.compare(password, hash);
+
+export const createSecureToken = () => crypto.randomBytes(32).toString("base64url");
+
+export const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
+
+export const getTokenExpiry = (minutes) => new Date(Date.now() + minutes * 60 * 1000);
 
 export const signAuthToken = (user) =>
   jwt.sign({ role: user.role }, env.JWT_SECRET, {

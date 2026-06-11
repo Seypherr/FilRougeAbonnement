@@ -10,6 +10,7 @@ import { AdminPage } from "./pages/AdminPage.jsx";
 import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
 import { AuthPage } from "./pages/AuthPage.jsx";
 import { DashboardPage } from "./pages/DashboardPage.jsx";
+import { EmailVerificationRequiredPage } from "./pages/EmailVerificationRequiredPage.jsx";
 import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage.jsx";
 
@@ -18,9 +19,9 @@ export function App() {
   const [tab, setTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
   const [modalState, setModalState] = useState({ open: false, subscription: null });
-  const t = dictionaries[language];
-  const { user, loading, logout, updateProfile } = useAuth();
-  const subscriptionState = useSubscriptions("", Boolean(user));
+  const t = dictionaries[language] ?? dictionaries.en;
+  const { user, loading, logout, resendVerification, updateProfile } = useAuth();
+  const subscriptionState = useSubscriptions("", Boolean(user && user.emailVerified !== false));
 
   const notify = (message, type = "success") => {
     setToast({ message, type });
@@ -53,6 +54,17 @@ export function App() {
 
   if (!user) {
     return <AuthPage t={t} language={language} setLanguage={setLanguage} />;
+  }
+
+  if (user.emailVerified === false) {
+    return (
+      <EmailVerificationRequiredPage
+        t={t}
+        user={user}
+        resendVerification={resendVerification}
+        logout={logout}
+      />
+    );
   }
 
   const navItems = [
@@ -111,6 +123,7 @@ export function App() {
       {tab === "statistics" && (
         <AnalyticsPage
           t={t}
+          language={language}
           subscriptions={subscriptionState.subscriptions}
           totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
           loading={subscriptionState.loading}

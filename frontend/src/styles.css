@@ -9,6 +9,13 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 ::-webkit-scrollbar {
   display: none;
 }
@@ -85,7 +92,7 @@ textarea:focus-visible {
 }
 
 .page-transition {
-  animation: page-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: page-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
   transform-origin: 50% 12%;
   will-change: opacity, transform, filter;
 }
@@ -109,9 +116,136 @@ textarea:focus-visible {
   }
 }
 
+.modal-backdrop-enter {
+  animation: backdrop-enter 180ms ease-out both;
+}
+
+.modal-panel-enter {
+  animation: modal-enter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+.subscription-modal-panel {
+  animation: subscription-sheet-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+.floating-menu-enter {
+  animation: floating-menu-enter 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: 50% 0;
+  will-change: opacity, transform;
+}
+
+button,
+[role="button"],
+.input,
+.input-shell,
+select,
+input,
+textarea {
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes subscription-sheet-enter {
+  from {
+    opacity: 0.98;
+    transform: translate3d(0, 100%, 0);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translate3d(0, -4px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (min-width: 1024px) {
+  .subscription-modal-panel {
+    animation-name: modal-enter;
+    animation-duration: 260ms;
+  }
+}
+
+@keyframes floating-menu-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes calendar-pop {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes calendar-sheet {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .page-transition {
+  .page-transition,
+  .modal-backdrop-enter,
+  .modal-panel-enter,
+  .subscription-modal-panel,
+  .floating-menu-enter {
     animation: none;
+  }
+
+  button,
+  [role="button"],
+  .input,
+  .input-shell,
+  select,
+  input,
+  textarea {
+    transition-duration: 0ms;
   }
 }
 

@@ -9,6 +9,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { categoryRouter } from "./routes/category.routes.js";
 import { subscriptionRouter } from "./routes/subscription.routes.js";
 import { errorHandler, notFound } from "./middlewares/errorHandler.js";
+import { csrfProtection } from "./middlewares/csrf.js";
 import { logger } from "./utils/logger.js";
 
 export const app = express();
@@ -26,12 +27,13 @@ app.use(
       callback(new Error("Not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
+    allowedHeaders: ["Content-Type", env.CSRF_HEADER_NAME],
     credentials: true
   })
 );
 app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
+app.use(csrfProtection);
 app.use(
   morgan("dev", {
     stream: {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSubscriptionStats } from "./subscriptions.js";
+import { getRenewalAlerts, getSubscriptionStats } from "./subscriptions.js";
 
 describe("getSubscriptionStats", () => {
   it("calculates analytics from active subscriptions only", () => {
@@ -47,5 +47,23 @@ describe("getSubscriptionStats", () => {
     expect(stats.highestMonthly).toBe(12);
     expect(stats.categoryTotals).toEqual({ Streaming: 12, Software: 10 });
     expect(stats.topCosts.map((item) => item.name)).toEqual(["Netflix", "Figma"]);
+  });
+});
+
+describe("getRenewalAlerts", () => {
+  it("detects active renewals in the next 7 days and marks 3-day alerts", () => {
+    const subscriptions = [
+      { id: "today", name: "Netflix", status: "ACTIVE", renewalDate: "2026-06-11T00:00:00.000Z" },
+      { id: "three-days", name: "Spotify", status: "ACTIVE", renewalDate: "2026-06-14T00:00:00.000Z" },
+      { id: "seven-days", name: "Disney+", status: "ACTIVE", renewalDate: "2026-06-18T00:00:00.000Z" },
+      { id: "too-far", name: "Figma", status: "ACTIVE", renewalDate: "2026-06-20T00:00:00.000Z" },
+      { id: "archived", name: "Archived", status: "ARCHIVED", renewalDate: "2026-06-12T00:00:00.000Z" },
+      { id: "paused", name: "Paused", status: "INACTIVE", renewalDate: "2026-06-12T00:00:00.000Z" }
+    ];
+
+    const alerts = getRenewalAlerts(subscriptions, new Date("2026-06-11T12:00:00.000Z"));
+
+    expect(alerts.map((item) => item.id)).toEqual(["today", "three-days", "seven-days"]);
+    expect(alerts.map((item) => item.alertWindow)).toEqual([3, 3, 7]);
   });
 });

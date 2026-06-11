@@ -17,6 +17,7 @@ const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
@@ -45,11 +46,18 @@ vi.mock("../src/config/prisma.js", () => ({
 
 const { app } = await import("../src/app.js");
 
+async function csrfHeaders(agent) {
+  const response = await agent.get("/api/auth/csrf").expect(200);
+
+  return { "x-csrf-token": response.body.csrfToken };
+}
+
 const user = {
   id: "11111111-1111-4111-8111-111111111111",
   name: "Test User",
   email: "user@test.local",
   avatarUrl: null,
+  emailVerified: true,
   role: "USER",
   isActive: true,
   createdAt: new Date(),
@@ -60,6 +68,7 @@ const admin = {
   id: "22222222-2222-4222-8222-222222222222",
   name: "Admin",
   email: "admin@test.local",
+  emailVerified: true,
   role: "ADMIN",
   isActive: true,
   createdAt: new Date(),
@@ -72,7 +81,7 @@ const subscription = {
   description: null,
   price: 12,
   billingCycle: "MONTHLY",
-  renewalDate: new Date("2026-05-15T00:00:00.000Z"),
+  renewalDate: new Date("2099-05-15T00:00:00.000Z"),
   status: "ACTIVE",
   paymentMethod: null,
   userId: user.id,
@@ -83,7 +92,7 @@ const subscription = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("auth API", () => {
@@ -143,6 +152,86 @@ describe("auth API", () => {
     expect(response.body.user.password).toBeUndefined();
   });
 
+  it("rejects malformed emails during registration", async () => {
+    const response = await request(app)
+      .post("/api/auth/register")
+      .send({ name: user.name, email: "bad..email@test.local", password: "Password123!" })
+      .expect(400);
+
+    expect(response.body.message).toBe("Validation failed");
+  });
+
+  it("prepares a password reset without revealing whether the email exists", async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+    const response = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: "missing@test.local" })
+      .expect(200);
+
+    expect(response.body.message).toContain("If an account exists");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("resets a password with a valid reset token", async () => {
+    mockPrisma.user.findFirst.mockResolvedValueOnce(user);
+    mockPrisma.user.update.mockResolvedValueOnce(user);
+
+    await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: "a".repeat(43), password: "NewPassword123!" })
+      .expect(200);
+
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: expect.objectContaining({
+          passwordResetTokenHash: null,
+          passwordResetTokenExpiresAt: null
+        })
+      })
+    );
+  });
+
+  it("verifies an email with a valid verification token", async () => {
+    const verifiedUser = { ...user, emailVerified: true };
+    mockPrisma.user.findFirst.mockResolvedValueOnce({ ...user, emailVerified: false });
+    mockPrisma.user.update.mockResolvedValueOnce(verifiedUser);
+
+    const response = await request(app)
+      .post("/api/auth/verify-email")
+      .send({ token: "b".repeat(43) })
+      .expect(200);
+
+    expect(response.body.user.emailVerified).toBe(true);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          emailVerified: true,
+          emailVerificationTokenHash: null,
+          emailVerificationTokenExpiresAt: null
+        })
+      })
+    );
+  });
+
+  it("blocks full subscription access when email is not verified", async () => {
+    const agent = request.agent(app);
+    const unverifiedUser = { ...user, emailVerified: false };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(unverifiedUser);
+    mockPrisma.user.update.mockResolvedValueOnce(unverifiedUser);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(unverifiedUser);
+
+    await agent.get("/api/subscriptions").expect(403);
+  });
+
   it("returns an empty session without a cookie", async () => {
     const response = await request(app).get("/api/auth/me").expect(200);
 
@@ -171,6 +260,7 @@ describe("auth API", () => {
 
     const response = await agent
       .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
       .send({
         name: updatedUser.name,
         email: updatedUser.email,
@@ -186,13 +276,55 @@ describe("auth API", () => {
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: user.id },
-        data: {
+        data: expect.objectContaining({
           name: updatedUser.name,
           avatarUrl: updatedUser.avatarUrl,
-          email: updatedUser.email
-        }
+          email: updatedUser.email,
+          emailVerified: false
+        })
       })
     );
+  });
+
+  it("rejects imported image data URLs for the profile avatar", async () => {
+    const agent = request.agent(app);
+    const importedAvatar = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    const response = await agent
+      .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
+      .send({ avatarUrl: importedAvatar })
+      .expect(400);
+
+    expect(response.body.message).toBe("Validation failed");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects protected mutations without a CSRF token", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    await agent
+      .put("/api/auth/me")
+      .send({ name: "Blocked Update" })
+      .expect(403);
+
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
   it("rejects a profile update when the email is already used", async () => {
@@ -215,6 +347,7 @@ describe("auth API", () => {
 
     await agent
       .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
       .send({ email: otherUser.email })
       .expect(409);
 
@@ -235,6 +368,7 @@ describe("auth API", () => {
 
     const response = await agent
       .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
       .send({ email: "not-an-email" })
       .expect(400);
 
@@ -256,6 +390,7 @@ describe("auth API", () => {
 
     const response = await agent
       .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
       .send({ name: "Still User", role: "ADMIN", isActive: false })
       .expect(400);
 
@@ -336,11 +471,12 @@ describe("subscription API", () => {
 
     const response = await agent
       .post("/api/subscriptions")
+      .set(await csrfHeaders(agent))
       .send({
         name: "Netflix",
         price: 12,
         billingCycle: "MONTHLY",
-        renewalDate: "2026-05-15T00:00:00.000Z"
+        renewalDate: "2099-05-15T00:00:00.000Z"
       })
       .expect(201);
 
@@ -366,11 +502,39 @@ describe("subscription API", () => {
 
     const response = await agent
       .post("/api/subscriptions")
+      .set(await csrfHeaders(agent))
       .send({
         name: "",
         price: 0,
         billingCycle: "MONTHLY",
         renewalDate: ""
+      })
+      .expect(400);
+
+    expect(response.body.message).toBe("Validation failed");
+    expect(mockPrisma.subscription.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects subscription creation with a past renewal date", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    const response = await agent
+      .post("/api/subscriptions")
+      .set(await csrfHeaders(agent))
+      .send({
+        name: "Old Plan",
+        price: 9.99,
+        billingCycle: "MONTHLY",
+        renewalDate: "2000-01-01T00:00:00.000Z"
       })
       .expect(400);
 
@@ -394,6 +558,7 @@ describe("subscription API", () => {
 
     const response = await agent
       .put(`/api/subscriptions/${subscription.id}`)
+      .set(await csrfHeaders(agent))
       .send({ name: "Netflix Premium" })
       .expect(200);
 
@@ -414,7 +579,10 @@ describe("subscription API", () => {
     mockPrisma.subscription.findFirst.mockResolvedValueOnce(subscription);
     mockPrisma.subscription.update.mockResolvedValueOnce({ ...subscription, status: "ARCHIVED" });
 
-    const response = await agent.delete(`/api/subscriptions/${subscription.id}`).expect(200);
+    const response = await agent
+      .delete(`/api/subscriptions/${subscription.id}`)
+      .set(await csrfHeaders(agent))
+      .expect(200);
 
     expect(response.body.subscription.status).toBe("ARCHIVED");
     expect(mockPrisma.subscription.update).toHaveBeenCalledWith(
@@ -439,7 +607,10 @@ describe("subscription API", () => {
     mockPrisma.subscription.findFirst.mockResolvedValueOnce(archivedSubscription);
     mockPrisma.subscription.delete.mockResolvedValueOnce(archivedSubscription);
 
-    await agent.delete(`/api/subscriptions/${subscription.id}/permanent`).expect(204);
+    await agent
+      .delete(`/api/subscriptions/${subscription.id}/permanent`)
+      .set(await csrfHeaders(agent))
+      .expect(204);
 
     expect(mockPrisma.subscription.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -467,7 +638,10 @@ describe("subscription API", () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(user);
     mockPrisma.subscription.findFirst.mockResolvedValueOnce(subscription);
 
-    const response = await agent.delete(`/api/subscriptions/${subscription.id}/permanent`).expect(400);
+    const response = await agent
+      .delete(`/api/subscriptions/${subscription.id}/permanent`)
+      .set(await csrfHeaders(agent))
+      .expect(400);
 
     expect(response.body.message).toBe("Only archived subscriptions can be permanently deleted");
     expect(mockPrisma.subscription.delete).not.toHaveBeenCalled();
@@ -486,7 +660,10 @@ describe("subscription API", () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(user);
     mockPrisma.subscription.findFirst.mockResolvedValueOnce(null);
 
-    await agent.delete(`/api/subscriptions/${subscription.id}/permanent`).expect(404);
+    await agent
+      .delete(`/api/subscriptions/${subscription.id}/permanent`)
+      .set(await csrfHeaders(agent))
+      .expect(404);
 
     expect(mockPrisma.subscription.delete).not.toHaveBeenCalled();
   });
@@ -506,6 +683,7 @@ describe("subscription API", () => {
 
     await agent
       .put(`/api/subscriptions/${subscription.id}`)
+      .set(await csrfHeaders(agent))
       .send({ name: "Forbidden update" })
       .expect(404);
   });
@@ -600,7 +778,10 @@ describe("admin API", () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(admin);
     mockPrisma.user.delete.mockResolvedValueOnce(user);
 
-    await agent.delete(`/api/admin/users/${user.id}`).expect(204);
+    await agent
+      .delete(`/api/admin/users/${user.id}`)
+      .set(await csrfHeaders(agent))
+      .expect(204);
 
     expect(mockPrisma.user.delete).toHaveBeenCalledWith({
       where: { id: user.id }
@@ -617,7 +798,10 @@ describe("admin API", () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(admin);
     mockPrisma.subscription.delete.mockResolvedValueOnce(subscription);
 
-    await agent.delete(`/api/admin/subscriptions/${subscription.id}`).expect(204);
+    await agent
+      .delete(`/api/admin/subscriptions/${subscription.id}`)
+      .set(await csrfHeaders(agent))
+      .expect(204);
 
     expect(mockPrisma.subscription.delete).toHaveBeenCalledWith({
       where: { id: subscription.id }

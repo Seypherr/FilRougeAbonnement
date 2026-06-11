@@ -10,14 +10,14 @@ import {
   listUsers,
   updateUser
 } from "../controllers/user.controller.js";
-import { requireAdmin, requireAuth } from "../middlewares/auth.js";
+import { requireAdmin, requireAuth, requireVerifiedEmail } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { subscriptionListSchema, subscriptionParamsSchema } from "../validators/subscription.validators.js";
 import { userCreateSchema, userParamsSchema, userUpdateSchema } from "../validators/user.validators.js";
 
 export const adminRouter = Router();
 
-adminRouter.use(requireAuth, requireAdmin);
+adminRouter.use(requireAuth, requireVerifiedEmail, requireAdmin);
 
 adminRouter.get("/users", listUsers);
 adminRouter.post("/users", validate(userCreateSchema), createUser);

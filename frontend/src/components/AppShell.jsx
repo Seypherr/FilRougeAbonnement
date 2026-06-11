@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { BarChart3, CreditCard, Grid2X2, Home, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
 import { Toast } from "./Toast.jsx";
-import { UserAvatar } from "./UserAvatar.jsx";
 
 const navIconMap = {
   dashboard: Home,
@@ -13,22 +12,13 @@ const navIconMap = {
 
 export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAddSubscription, logout }) {
   const [logoutError, setLogoutError] = useState("");
-  const mobileItems = user.role === "ADMIN"
-    ? [
-        ["dashboard", Home],
-        ["subscriptions", Grid2X2],
-        ["add", Plus],
-        ["statistics", PieChart],
-        ["admin", Shield],
-        ["profile", UserRound]
-      ]
-    : [
-        ["dashboard", Home],
-        ["subscriptions", Grid2X2],
-        ["add", Plus],
-        ["statistics", PieChart],
-        ["profile", UserRound]
-      ];
+  const mobileItems = [
+    ["dashboard", Home],
+    ["subscriptions", Grid2X2],
+    ["add", Plus],
+    ["statistics", PieChart],
+    ["profile", UserRound]
+  ];
 
   const handleSidebarLogout = async () => {
     setLogoutError("");
@@ -40,7 +30,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
   };
 
   return (
-    <main className="min-h-screen bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[280px_1fr] lg:p-6">
+    <main className="min-h-screen overflow-x-hidden bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[280px_1fr] lg:p-6">
       <aside className="hidden min-h-[calc(100vh-48px)] rounded-l-[32px] border-r border-slate-100 bg-white p-8 lg:flex lg:flex-col">
         <div>
           <div className="mb-10 flex items-center gap-3">
@@ -87,7 +77,9 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
             onClick={() => setTab("profile")}
             className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 p-3 text-left transition hover:bg-[#F4F0FF] active:scale-[0.99]"
           >
-            <UserAvatar user={user} className="size-10" />
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-100">
+              <UserRound size={18} />
+            </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{user.name}</p>
               <p className="truncate text-xs font-semibold text-slate-500">{user.email}</p>
@@ -124,16 +116,16 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
             <button
               key={`${id}-${index}`}
               aria-label={label}
-              className={`${isAdd ? "relative -top-6 flex-1" : "flex-1"} grid min-h-14 place-items-center text-xs font-black transition ${active ? "text-[#6C51FF]" : "text-slate-400 hover:text-[#6C51FF]"}`}
+              className={`${isAdd ? "relative -top-6 flex-1" : "flex-1"} grid min-h-14 place-items-center text-xs font-black transition ${active ? "text-slate-500" : "text-slate-400 hover:text-slate-500"}`}
               onClick={() => (isAdd ? onAddSubscription() : setTab(id))}
             >
               {isAdd ? (
                 <span className="grid size-14 place-items-center rounded-full border-4 border-white bg-[#6C51FF] text-white shadow-[0_8px_20px_-6px_rgba(108,81,255,0.4)]">
-                  <Icon size={25} />
+                  <Icon size={25} strokeWidth={2.5} />
                 </span>
               ) : (
                 <span className="grid gap-1 place-items-center">
-                  <Icon size={24} fill={active ? "currentColor" : "none"} />
+                  <Icon size={24} fill="none" strokeWidth={active ? 2.6 : 2.2} />
                   <span className={`size-1.5 rounded-full ${active ? "bg-[#6C51FF]" : "bg-transparent"}`} />
                 </span>
               )}

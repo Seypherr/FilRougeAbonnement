@@ -1,7 +1,7 @@
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { UserAvatar } from "../components/UserAvatar.jsx";
-import { formatMoney, getSubscriptionStats } from "../utils/subscriptions.js";
+import { formatMoney, getRenewalAlerts, getSubscriptionStats } from "../utils/subscriptions.js";
 
 function getDaysUntil(dateValue) {
   const today = new Date();
@@ -21,7 +21,7 @@ function RenewalCard({ t, item, index, desktop = false }) {
   const due = getDueLabel(item.renewalDate, t);
   return (
     <div className={`flex items-center gap-4 bg-white transition-all ${desktop ? "rounded-[20px] px-6 py-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]" : "rounded-[20px] p-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]"}`}>
-      <SubscriptionLogo name={item.name} className={`${desktop ? "size-10" : "size-[52px]"} rounded-full`} />
+      <SubscriptionLogo name={item.name} className={`${desktop ? "size-9" : "size-11"} rounded-full`} />
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-[15px] font-bold leading-tight text-slate-800">{item.name}</h3>
         <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? "Student Plan"}</p>
@@ -43,6 +43,8 @@ function RenewalCard({ t, item, index, desktop = false }) {
 
 export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, error, user, setTab, onAddSubscription }) {
   const stats = getSubscriptionStats(subscriptions, totalMonthlyAmount);
+  const renewalAlerts = getRenewalAlerts(subscriptions);
+  const hasRenewalAlert = renewalAlerts.length > 0;
   const renewals = stats.upcomingRenewals.slice(0, 5);
   const dueNext7Days = stats.upcomingRenewals
     .filter((item) => {
@@ -63,13 +65,20 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
               <h1 className="max-w-[220px] truncate text-xl font-bold tracking-tight text-white">{displayName}</h1>
             </div>
             <div className="flex items-center gap-3">
+              <div
+                aria-label={t.renewalAlerts}
+                className="relative flex size-12 items-center justify-center rounded-[16px] border border-white/20 bg-white/10 text-white shadow-sm backdrop-blur-md"
+              >
+                <i className="ph ph-bell text-[22px]" />
+                {hasRenewalAlert && <span data-testid="renewal-alert-dot" className="absolute right-3 top-3 size-2.5 rounded-full bg-rose-400 ring-2 ring-[#7B42FF]" />}
+              </div>
               <button
                 type="button"
                 aria-label={t.openProfile}
-                className="flex size-11 items-center justify-center overflow-hidden rounded-[14px] border border-white/30 bg-transparent text-sm font-bold text-white shadow-sm transition hover:bg-white/10"
+                className="flex size-12 items-center justify-center rounded-[16px] border border-white/50 bg-white/95 p-1 text-sm font-bold text-[#6C51FF] shadow-[0_10px_24px_-14px_rgba(15,23,42,0.45)] transition hover:bg-white active:scale-[0.98]"
                 onClick={() => setTab("profile")}
               >
-                <UserAvatar user={user} className="size-full rounded-[14px]" />
+                <UserAvatar user={user} className="size-full rounded-[12px] bg-[#F4F0FF] text-[#6C51FF]" textClassName="text-base leading-none" />
               </button>
             </div>
           </header>
@@ -78,8 +87,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             <div className="flex w-full flex-col items-center pb-8 pt-2 text-white">
               <span className="text-[13px] font-medium text-white/80">{t.monthlySpending}</span>
               <div className="mt-4 flex items-baseline justify-center gap-1">
-                <span className="text-4xl font-semibold text-white/70">$</span>
-                <span className="text-[58px] font-bold leading-none tracking-tight text-white">{Number(totalMonthlyAmount || 0).toFixed(2)}</span>
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(totalMonthlyAmount)}</span>
               </div>
               <div className="mt-6 flex justify-center">
                 <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/15 px-4 py-2 backdrop-blur-md">
@@ -142,7 +150,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             <div className="relative z-10 text-center">
               <p className="text-sm font-medium tracking-wide text-white/90">{t.monthlyTotal}</p>
               <div className="mt-1 flex items-baseline justify-center gap-1">
-                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(totalMonthlyAmount).replace("$", "$")}</span>
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(totalMonthlyAmount)}</span>
               </div>
               <p className="mt-2 text-sm font-medium text-white/70">{t.dueNext7Days}: {formatMoney(dueNext7Days)}</p>
             </div>

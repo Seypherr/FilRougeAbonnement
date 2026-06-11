@@ -41,7 +41,8 @@ export const createUser = asyncHandler(async (req, res) => {
   const user = await prisma.user.create({
     data: {
       ...data,
-      password: await hashPassword(password)
+      password: await hashPassword(password),
+      emailVerified: true
     },
     select: publicUserSelect
   });

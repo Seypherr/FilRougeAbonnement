@@ -8,7 +8,7 @@ function Toggle({ checked, onChange, label, disabled = false }) {
   return (
     <label className={`relative inline-flex items-center ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
       <input type="checkbox" aria-label={label} className="peer sr-only" checked={checked} onChange={onChange} disabled={disabled} />
-      <div className="h-5 w-9 rounded-full bg-slate-300 after:absolute after:left-[2px] after:top-[2px] after:size-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:bg-emerald-500 peer-checked:after:translate-x-4" />
+      <div className="h-7 w-12 rounded-full bg-slate-300 shadow-inner after:absolute after:left-[2px] after:top-[2px] after:size-6 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:bg-emerald-500 peer-checked:after:translate-x-5" />
     </label>
   );
 }
@@ -32,7 +32,7 @@ function getSubscriptionStatus(status, t) {
 
 function RoleBadge({ role }) {
   const colors = getUserColors(role);
-  return <span className={`inline-flex rounded-lg px-2 py-1 text-[10px] font-black uppercase tracking-wider ${colors.badge}`}>{role}</span>;
+  return <span className={`inline-flex rounded-xl px-3 py-1.5 text-[11px] font-black uppercase tracking-wider ${colors.badge}`}>{role}</span>;
 }
 
 export function AdminPage({ t, notify, currentUser }) {
@@ -188,7 +188,7 @@ export function AdminPage({ t, notify, currentUser }) {
                 <div className="lg:p-6"><StatePanel title={t.emptyUsersTitle} message={t.emptyUsersMessage} tone="empty" icon="ph-users" /></div>
               ) : (
                 <div className="grid gap-3 lg:gap-0">
-                  <div className="hidden border-b border-slate-100 px-6 py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 lg:grid lg:grid-cols-[minmax(260px,1.4fr)_130px_150px_180px_72px] lg:items-center">
+                  <div className="hidden border-b border-slate-100 px-6 py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 lg:grid lg:grid-cols-[minmax(280px,1.35fr)_minmax(210px,0.75fr)_minmax(210px,0.75fr)_150px_72px] lg:items-center">
                     <span>{t.user}</span>
                     <span>{t.role}</span>
                     <span>{t.status}</span>
@@ -201,7 +201,7 @@ export function AdminPage({ t, notify, currentUser }) {
                     const isCurrentUser = user.id === currentUser?.id;
                     const isBusy = busyUserId === user.id;
                     return (
-                      <div key={user.id} className={`grid gap-4 rounded-[20px] border border-slate-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] lg:grid-cols-[minmax(260px,1.4fr)_130px_150px_180px_72px] lg:items-center lg:rounded-none lg:border-0 lg:border-b lg:p-6 lg:shadow-none ${!user.isActive ? "opacity-75" : ""}`}>
+                      <div key={user.id} className={`grid gap-4 rounded-[20px] border border-slate-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] lg:grid-cols-[minmax(280px,1.35fr)_minmax(210px,0.75fr)_minmax(210px,0.75fr)_150px_72px] lg:items-center lg:rounded-none lg:border-0 lg:border-b lg:p-6 lg:shadow-none ${!user.isActive ? "opacity-75" : ""}`}>
                         <div className="flex min-w-0 items-center gap-3">
                           <div className={`flex size-11 shrink-0 items-center justify-center rounded-full ${colors.avatar}`}>
                             <span className={`text-[16px] font-bold ${colors.text}`}>{user.name?.[0] ?? "U"}</span>
@@ -215,21 +215,21 @@ export function AdminPage({ t, notify, currentUser }) {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 lg:block">
+                        <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50/70 p-3 lg:justify-start lg:bg-transparent lg:p-0">
                           <span className="text-xs font-bold text-slate-400 lg:hidden">{t.role}</span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex min-w-0 flex-wrap items-center gap-3">
                             <RoleBadge role={user.role} />
-                            <select aria-label={`${t.role} ${user.email}`} value={user.role} onChange={(event) => updateUser(user, { role: event.target.value })} disabled={isCurrentUser || isBusy} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            <select aria-label={`${t.role} ${user.email}`} value={user.role} onChange={(event) => updateUser(user, { role: event.target.value })} disabled={isCurrentUser || isBusy} className="min-h-11 min-w-[128px] rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 shadow-sm transition focus:border-[#6C51FF] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50">
                               <option value="USER">USER</option>
                               <option value="ADMIN">ADMIN</option>
                             </select>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-50/70 p-3 lg:justify-start lg:bg-transparent lg:p-0">
                           <span className="text-xs font-bold text-slate-400 lg:hidden">{t.status}</span>
-                          <div className="flex items-center gap-3">
-                            <span className={`text-xs font-black ${user.isActive ? "text-emerald-600" : "text-slate-400"}`}>{user.isActive ? t.enabled : t.disabled}</span>
+                          <div className="flex min-w-[150px] items-center justify-between gap-4">
+                            <span className={`min-w-[74px] text-sm font-black ${user.isActive ? "text-emerald-600" : "text-slate-400"}`}>{user.isActive ? t.enabled : t.disabled}</span>
                             <Toggle label={`${t.accountActive} ${user.email}`} checked={user.isActive} onChange={() => updateUser(user, { isActive: !user.isActive })} disabled={isCurrentUser || isBusy} />
                           </div>
                         </div>
@@ -281,7 +281,7 @@ export function AdminPage({ t, notify, currentUser }) {
                   return (
                     <div key={sub.id} className="grid gap-4 rounded-[20px] border border-slate-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)] lg:grid-cols-[minmax(260px,1.4fr)_minmax(180px,0.9fr)_120px_150px_72px] lg:items-center lg:rounded-none lg:border-0 lg:border-b lg:p-6 lg:shadow-none">
                       <div className="flex min-w-0 items-center gap-4">
-                        <SubscriptionLogo name={sub.name} className="size-12 rounded-[14px]" muted={sub.status !== "ACTIVE"} />
+                        <SubscriptionLogo name={sub.name} className="size-10 rounded-[12px]" muted={sub.status !== "ACTIVE"} />
                         <div className="min-w-0">
                           <h3 className="truncate text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
                         </div>

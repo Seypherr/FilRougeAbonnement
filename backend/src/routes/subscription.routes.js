@@ -7,7 +7,7 @@ import {
   listMySubscriptions,
   updateMySubscription
 } from "../controllers/subscription.controller.js";
-import { requireAuth } from "../middlewares/auth.js";
+import { requireAuth, requireVerifiedEmail } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import {
   subscriptionCreateSchema,
@@ -18,7 +18,7 @@ import {
 
 export const subscriptionRouter = Router();
 
-subscriptionRouter.use(requireAuth);
+subscriptionRouter.use(requireAuth, requireVerifiedEmail);
 subscriptionRouter.get("/", validate(subscriptionListSchema), listMySubscriptions);
 subscriptionRouter.post("/", validate(subscriptionCreateSchema), createSubscription);
 subscriptionRouter.get("/:id", validate(subscriptionParamsSchema), getMySubscription);

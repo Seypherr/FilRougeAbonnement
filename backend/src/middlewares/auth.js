@@ -19,6 +19,7 @@ export const requireAuth = async (req, _res, next) => {
         name: true,
         email: true,
         avatarUrl: true,
+        emailVerified: true,
         role: true,
         isActive: true,
         createdAt: true,
@@ -35,6 +36,14 @@ export const requireAuth = async (req, _res, next) => {
   } catch (error) {
     next(error.statusCode ? error : new HttpError(401, "Invalid token"));
   }
+};
+
+export const requireVerifiedEmail = (req, _res, next) => {
+  if (req.user?.emailVerified === false) {
+    return next(new HttpError(403, "Email verification required"));
+  }
+
+  next();
 };
 
 export const requireAdmin = (req, _res, next) => {

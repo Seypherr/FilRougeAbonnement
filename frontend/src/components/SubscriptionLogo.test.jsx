@@ -3,8 +3,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { SubscriptionLogo } from "./SubscriptionLogo.jsx";
 import {
+  getPaymentMethodLogo,
+  getPaymentMethodSuggestions,
   getServiceDomain,
   getServiceFallback,
+  getServicePlanSuggestion,
   getServiceSuggestions,
   getSubscriptionInitial,
   getSubscriptionLogo
@@ -17,7 +20,9 @@ describe("subscription logos", () => {
     expect(getSubscriptionLogo("Basic Fit Club")).toEqual(expect.objectContaining({ brand: "Basic-Fit", domain: "basic-fit.com" }));
     expect(getSubscriptionLogo("Canal+ Series")).toEqual(expect.objectContaining({ brand: "Canal+", domain: "canalplus.com" }));
     expect(getSubscriptionLogo("Disney+")).toEqual(expect.objectContaining({ brand: "Disney+", domain: "disneyplus.com" }));
-    expect(getSubscriptionLogo("Credit Agricole")).toEqual(expect.objectContaining({ brand: "Crédit Agricole", domain: "credit-agricole.fr" }));
+    expect(getSubscriptionLogo("Credit Agricole")).toEqual(expect.objectContaining({ brand: "Credit Agricole", domain: "credit-agricole.fr" }));
+    expect(getSubscriptionLogo("ChatGPT Plus")).toEqual(expect.objectContaining({ brand: "ChatGPT", domain: "chatgpt.com" }));
+    expect(getSubscriptionLogo("Fitness Park")).toEqual(expect.objectContaining({ brand: "Fitness Park", domain: "fitnesspark.fr" }));
   });
 
   it("resolves expected domains for common services", () => {
@@ -27,11 +32,13 @@ describe("subscription logos", () => {
     expect(getServiceDomain("Amazon Prime")).toBe("amazon.com");
     expect(getServiceDomain("BNP Paribas")).toBe("bnpparibas.fr");
     expect(getServiceDomain("Credit Agricole")).toBe("credit-agricole.fr");
+    expect(getServiceDomain("Apple TV+")).toBe("apple.com");
+    expect(getServiceDomain("Microsoft 365")).toBe("microsoft.com");
   });
 
   it("handles accents, spaces and unknown services safely", () => {
     expect(getServiceDomain("  Credit   Agricole  ")).toBe("credit-agricole.fr");
-    expect(getServiceDomain("Cr\u00e9dit Agricole")).toBe("credit-agricole.fr");
+    expect(getServiceDomain("Crédit Agricole")).toBe("credit-agricole.fr");
     expect(getServiceDomain("Local Gym")).toBeNull();
     expect(getSubscriptionLogo("Local Gym")).toEqual(expect.objectContaining({ hasLogo: false, domain: null, initials: "LG" }));
   });
@@ -40,9 +47,25 @@ describe("subscription logos", () => {
     expect(getServiceSuggestions("net").map((service) => service.name)).toContain("Netflix");
     expect(getServiceSuggestions("oner")[0]).toEqual(expect.objectContaining({ name: "Oney", domain: "oney.fr" }));
     expect(getServiceSuggestions("Basic Fit")[0]).toEqual(expect.objectContaining({ name: "Basic-Fit", domain: "basic-fit.com" }));
-    expect(getServiceSuggestions("Credit Agricole")[0]).toEqual(expect.objectContaining({ name: "Crédit Agricole", domain: "credit-agricole.fr" }));
-    expect(getServiceSuggestions("Crédit Agricole")[0]).toEqual(expect.objectContaining({ name: "Crédit Agricole", domain: "credit-agricole.fr" }));
+    expect(getServiceSuggestions("Credit Agricole")[0]).toEqual(expect.objectContaining({ name: "Credit Agricole", domain: "credit-agricole.fr" }));
+    expect(getServiceSuggestions("Crédit Agricole")[0]).toEqual(expect.objectContaining({ name: "Credit Agricole", domain: "credit-agricole.fr" }));
     expect(getServiceSuggestions("unknown-service")).toEqual([]);
+  });
+
+  it("provides category and average price hints for known services", () => {
+    expect(getServicePlanSuggestion("Netflix")).toEqual(expect.objectContaining({ category: "Streaming", priceHints: [7.99, 14.99], defaultPrice: 7.99 }));
+    expect(getServicePlanSuggestion("Spotify")).toEqual(expect.objectContaining({ category: "Music", priceHints: [11.12], defaultPrice: 11.12 }));
+    expect(getServicePlanSuggestion("Disney+")).toEqual(expect.objectContaining({ category: "Streaming", priceHints: [5.99, 9.99], defaultPrice: 5.99 }));
+    expect(getServicePlanSuggestion("Canva Pro")).toEqual(expect.objectContaining({ category: "Software", priceHints: [11.99], defaultPrice: 11.99 }));
+    expect(getServicePlanSuggestion("Unknown")).toBeNull();
+  });
+
+  it("suggests payment methods and resolves payment logos with fallback", () => {
+    expect(getPaymentMethodSuggestions("credit")[0]).toEqual(expect.objectContaining({ name: "Credit Agricole", domain: "credit-agricole.fr" }));
+    expect(getPaymentMethodSuggestions("paypal")[0]).toEqual(expect.objectContaining({ name: "PayPal", domain: "paypal.com" }));
+    expect(getPaymentMethodSuggestions("amex")[0]).toEqual(expect.objectContaining({ name: "American Express", domain: "americanexpress.com" }));
+    expect(getPaymentMethodLogo("Visa 4242")).toEqual(expect.objectContaining({ brand: "Visa", domain: "visa.com", hasLogo: true }));
+    expect(getPaymentMethodLogo("Local Bank")).toEqual(expect.objectContaining({ domain: null, hasLogo: false, initials: "LB" }));
   });
 
   it("renders a Logo.dev image for known subscriptions", () => {

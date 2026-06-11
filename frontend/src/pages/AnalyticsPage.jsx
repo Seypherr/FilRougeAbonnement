@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { formatMoney, getSubscriptionStats } from "../utils/subscriptions.js";
@@ -22,12 +22,82 @@ function CategoryBar({ name, amount, width, color }) {
   );
 }
 
-export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, error, setTab }) {
+function formatRenewalDate(value, language) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  }).format(new Date(value));
+}
+
+function HighestSubscriptionModal({ t, language, subscription, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/45 p-0 backdrop-blur-sm animate-in fade-in duration-200 sm:place-items-center sm:p-6" onMouseDown={onClose}>
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="highest-subscription-title"
+        className="w-full max-w-lg rounded-t-[28px] bg-white p-5 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 sm:rounded-[28px] sm:p-6"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">{t.analytics}</p>
+            <h2 id="highest-subscription-title" className="mt-1 text-xl font-black text-slate-950">{t.highestSubscription}</h2>
+          </div>
+          <button type="button" aria-label={t.closeModal} onClick={onClose} className="flex size-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
+            <i className="ph ph-x text-lg" />
+          </button>
+        </header>
+
+        {subscription ? (
+          <div className="rounded-[24px] border border-slate-100 bg-slate-50 p-4">
+            <div className="flex items-center gap-4">
+              <SubscriptionLogo name={subscription.name} className="size-16 rounded-2xl" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-lg font-black text-slate-950">{subscription.name}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">{subscription.category?.name ?? t.other}</p>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.monthlyTotal}</p>
+                <p className="mt-2 text-2xl font-black text-slate-950">{formatMoney(subscription.monthlyAmount)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.renewalDate}</p>
+                <p className="mt-2 text-base font-black text-slate-950">{formatRenewalDate(subscription.renewalDate, language)}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <StatePanel title={t.emptyAnalyticsTitle} message={t.emptyAnalyticsMessage} tone="empty" icon="ph-crown" />
+        )}
+      </section>
+    </div>
+  );
+}
+
+export function AnalyticsPage({ t, language = "fr", subscriptions, totalMonthlyAmount, loading, error, setTab }) {
   const [period, setPeriod] = useState("month");
+  const [highestModalOpen, setHighestModalOpen] = useState(false);
   const stats = getSubscriptionStats(subscriptions, totalMonthlyAmount);
   const total = period === "year" ? stats.totalYearly : totalMonthlyAmount;
   const categoryEntries = Object.entries(stats.categoryTotals);
   const maxCategory = Math.max(...categoryEntries.map(([, value]) => value), 1);
+  const highestSubscription = stats.topCosts[0] ?? null;
 
   if (loading) {
     return (
@@ -74,8 +144,7 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
           <div className="flex flex-col items-center border-none bg-transparent p-4">
             <span className="mb-2 text-[13px] font-medium tracking-wide text-white/80">{t.totalSpend}</span>
             <div className="mb-2 flex items-baseline justify-center gap-1.5">
-              <span className="text-4xl font-semibold text-white/70">$</span>
-              <span className="text-[58px] font-bold leading-none tracking-tight text-white">{Number(total || 0).toFixed(2)}</span>
+              <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(total)}</span>
             </div>
             <div className="mx-auto mt-2 flex w-max items-center justify-center gap-3 rounded-[12px] px-4 py-2" style={{ backgroundColor: "#6E3BEA" }}>
               <i className="ph-fill ph-calendar-blank text-sm text-white/80" />
@@ -93,13 +162,13 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
             <span className="self-end text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-400">{t.averageCost}</span>
             <span className="self-start text-[20px] font-bold leading-none text-slate-800">{formatMoney(stats.averageMonthly)}</span>
           </div>
-          <div className="grid min-w-0 items-center gap-x-3 gap-y-0.5 rounded-[24px] bg-white p-3.5 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)]" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
+          <button type="button" onClick={() => setHighestModalOpen(true)} className="grid min-w-0 items-center gap-x-3 gap-y-0.5 rounded-[24px] bg-white p-3.5 text-left shadow-[0_4px_24px_-8px_rgba(0,0,0,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-18px_rgba(15,23,42,0.35)] active:scale-[0.99]" style={{ gridTemplateColumns: "auto minmax(0,1fr)" }}>
             <div className="row-span-2 flex size-11 items-center justify-center rounded-full bg-[#F1F3F5]">
               <i className="ph-bold ph-crown text-xl text-slate-500" />
             </div>
             <span className="self-end text-[10px] font-bold uppercase leading-tight tracking-wide text-slate-400">{t.highestSubscription}</span>
             <span className="self-start text-[20px] font-bold leading-none text-slate-800">{formatMoney(stats.highestMonthly)}</span>
-          </div>
+          </button>
         </section>
       </div>
 
@@ -121,10 +190,10 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.averageCost}</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{formatMoney(stats.averageMonthly)}</p>
           </div>
-          <div className="rounded-[20px] bg-white p-5 shadow-[0_4px_24px_-12px_rgba(0,0,0,0.08)]">
+          <button type="button" onClick={() => setHighestModalOpen(true)} className="rounded-[20px] bg-white p-5 text-left shadow-[0_4px_24px_-12px_rgba(0,0,0,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-20px_rgba(15,23,42,0.35)] active:scale-[0.99]">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{t.highestSubscription}</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{formatMoney(stats.highestMonthly)}</p>
-          </div>
+          </button>
         </section>
       </div>
 
@@ -149,7 +218,7 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
           ) : (
             stats.topCosts.map((item, index) => (
               <div key={item.id} className="flex items-center gap-4 rounded-[20px] bg-white p-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]">
-                <SubscriptionLogo name={item.name} className="size-12 rounded-full" rank={index + 1} />
+                <SubscriptionLogo name={item.name} className="size-10 rounded-full" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-bold text-slate-800">{item.name}</p>
                   <p className="truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? t.other}</p>
@@ -160,6 +229,15 @@ export function AnalyticsPage({ t, subscriptions, totalMonthlyAmount, loading, e
           )}
         </div>
       </section>
+
+      {highestModalOpen && (
+        <HighestSubscriptionModal
+          t={t}
+          language={language}
+          subscription={highestSubscription}
+          onClose={() => setHighestModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -30,6 +30,11 @@ model User {
   email         String         @unique
   password      String
   avatarUrl     String?        @map("avatar_url")
+  emailVerified Boolean        @default(false) @map("email_verified")
+  emailVerificationTokenHash String? @map("email_verification_token_hash")
+  emailVerificationTokenExpiresAt DateTime? @map("email_verification_token_expires_at")
+  passwordResetTokenHash String? @map("password_reset_token_hash")
+  passwordResetTokenExpiresAt DateTime? @map("password_reset_token_expires_at")
   role          Role           @default(USER)
   isActive      Boolean        @default(true) @map("is_active")
   subscriptions Subscription[]

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSubscriptionLogo } from "../utils/subscriptionLogos.js";
 
-export function SubscriptionLogo({ name, className = "size-12 rounded-full", muted = false, rank = null }) {
+export function SubscriptionLogo({ name, className = "size-12 rounded-full", muted = false }) {
   const logo = useMemo(() => getSubscriptionLogo(name), [name]);
   const [source, setSource] = useState("logo");
   const showImage = logo?.hasLogo && source !== "fallback";
@@ -34,11 +34,6 @@ export function SubscriptionLogo({ name, className = "size-12 rounded-full", mut
           aria-label={`${name} fallback logo`}
         >
           {initial}
-        </span>
-      )}
-      {rank !== null && (
-        <span className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-white bg-[#6C51FF] text-[10px] font-black text-white">
-          {rank}
         </span>
       )}
     </div>
