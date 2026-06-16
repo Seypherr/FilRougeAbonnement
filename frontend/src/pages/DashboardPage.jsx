@@ -1,6 +1,7 @@
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { UserAvatar } from "../components/UserAvatar.jsx";
+import { translateCategoryName } from "../i18n/dictionaries.js";
 import { formatMoney, getRenewalAlerts, getSubscriptionStats } from "../utils/subscriptions.js";
 
 function getDaysUntil(dateValue) {
@@ -24,7 +25,7 @@ function RenewalCard({ t, item, index, desktop = false }) {
       <SubscriptionLogo name={item.name} className={`${desktop ? "size-9" : "size-11"} rounded-full`} />
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-[15px] font-bold leading-tight text-slate-800">{item.name}</h3>
-        <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? "Student Plan"}</p>
+        <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{translateCategoryName(item.category?.name, t)}</p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1 text-right">
         {desktop ? (
@@ -52,7 +53,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
       return daysUntil >= 0 && daysUntil <= 7;
     })
     .reduce((sum, item) => sum + Number(item.monthlyAmount ?? 0), 0);
-  const displayName = user?.name ?? "User";
+  const displayName = user?.name ?? t.fallbackUser;
 
   return (
     <>

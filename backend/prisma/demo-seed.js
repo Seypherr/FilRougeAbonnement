@@ -7,11 +7,19 @@ const demoPassword = "Demo123!";
 
 const categories = [
   { name: "Streaming", color: "#ef4444" },
+  { name: "Sports", color: "#ea580c" },
   { name: "Music", color: "#10b981" },
   { name: "Software", color: "#3b82f6" },
   { name: "Fitness", color: "#8b5cf6" },
   { name: "Cloud", color: "#6366f1" },
+  { name: "AI", color: "#9333ea" },
+  { name: "Telecom", color: "#0891b2" },
+  { name: "Insurance", color: "#0f766e" },
+  { name: "Gaming", color: "#db2777" },
   { name: "Productivity", color: "#f59e0b" },
+  { name: "Finance", color: "#059669" },
+  { name: "Press", color: "#64748b" },
+  { name: "Professional", color: "#475569" },
   { name: "Other", color: "#94a3b8" }
 ];
 

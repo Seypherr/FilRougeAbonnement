@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { UserAvatar } from "../components/UserAvatar.jsx";
-
-const languageOptions = ["fr", "en", "es", "it", "de", "pt", "nl", "ar"];
+import { SUPPORTED_LANGUAGES } from "../i18n/dictionaries.js";
+import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
 
 function isValidOptionalAvatarValue(value) {
   if (!value.trim()) return true;
@@ -15,19 +15,17 @@ function isValidOptionalAvatarValue(value) {
   }
 }
 
-function AvatarPhotoModal({ t, language, user, value, saving, onClose, onSave, onRemove }) {
+function AvatarPhotoModal({ t, user, value, saving, onClose, onSave, onRemove }) {
   const [draft, setDraft] = useState(value ?? "");
   const [error, setError] = useState("");
   const trimmedDraft = draft.trim();
   const draftIsValid = isValidOptionalAvatarValue(draft);
   const previewUser = { ...user, avatarUrl: draftIsValid ? trimmedDraft || null : null };
-  const title = language === "fr" ? "Photo de profil" : "Profile photo";
-  const help = language === "fr"
-    ? "L'import direct sera branché sur un stockage externe avant la production."
-    : "Direct upload will be connected to external storage before production.";
-  const importLabel = language === "fr" ? "Importer une photo bientôt" : "Photo upload coming soon";
-  const deleteLabel = language === "fr" ? "Supprimer l'avatar" : "Remove avatar";
-  const urlLabel = language === "fr" ? "URL HTTPS de l'avatar" : "HTTPS avatar URL";
+  const title = t.profilePhotoTitle;
+  const help = t.profilePhotoHelp;
+  const importLabel = t.avatarUploadComingSoon;
+  const deleteLabel = t.removeAvatar;
+  const urlLabel = t.avatarHttpsUrl;
   const urlPlaceholder = "https://example.com/avatar.png";
 
   useEffect(() => {
@@ -154,27 +152,105 @@ function AvatarPhotoModal({ t, language, user, value, saving, onClose, onSave, o
   return createPortal(modal, document.body);
 }
 
-export function ProfilePage({ t, user, language, setLanguage, logout, updateProfile }) {
+function ConfirmationModal({ title, message, cancelLabel, confirmLabel, loading = false, onCancel, onConfirm }) {
+  const modal = (
+    <div
+      className="modal-backdrop-enter fixed inset-0 z-[90] grid place-items-end bg-slate-900/40 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-6"
+      onMouseDown={onCancel}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="profile-confirmation-title"
+        className="modal-panel-enter w-full rounded-t-[26px] bg-white p-5 shadow-[0_-14px_42px_-22px_rgba(15,23,42,0.55)] sm:max-w-sm sm:rounded-[26px]"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#F4F0FF] text-[#7047EB]">
+            <i className="ph-bold ph-check-circle text-lg" />
+          </span>
+          <div className="min-w-0">
+            <h2 id="profile-confirmation-title" className="text-base font-black text-slate-950">{title}</h2>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">{message}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {cancelLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={loading}
+            className="rounded-[16px] bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {loading ? "..." : confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}
+
+function getAppPlan(user) {
+  return user.appSubscription ?? user.appPlan ?? user.subscriptionPlan ?? user.plan ?? null;
+}
+
+function getPlanValue(plan, keys, fallback = null) {
+  if (!plan) return fallback;
+  return keys.reduce((value, key) => value ?? plan[key], null) ?? fallback;
+}
+
+function formatPlanDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+}
+
+export function ProfilePage({ t, user, language, setLanguage, forgotPassword, updateProfile }) {
   const [profileError, setProfileError] = useState("");
-  const [logoutError, setLogoutError] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [pendingProfileSave, setPendingProfileSave] = useState(null);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [forgotPasswordConfirmationOpen, setForgotPasswordConfirmationOpen] = useState(false);
+  const notificationsStorageKey = `subscription-manager:push-notifications:${user.id ?? user.email}`;
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(() => window.localStorage.getItem(notificationsStorageKey) === "enabled");
   const [form, setForm] = useState({
     name: user.name ?? "",
     email: user.email ?? "",
     avatarUrl: user.avatarUrl ?? ""
   });
-  const isActive = user.isActive ?? true;
   const previewUser = {
     ...user,
     name: form.name || user.name,
     email: form.email || user.email,
     avatarUrl: form.avatarUrl || null
   };
-  const editAvatarLabel = language === "fr" ? "Modifier la photo de profil" : "Edit profile photo";
-  const editProfileLabel = language === "fr" ? "Modifier profil" : "Edit profile";
+  const editAvatarLabel = t.editProfilePhoto;
+  const editProfileLabel = t.editProfile;
+  const appPlan = getAppPlan(user);
+  const appPlanName = getPlanValue(appPlan, ["name", "planName", "plan", "title"], t.noAppPlanTitle);
+  const appPlanPrice = getPlanValue(appPlan, ["price", "amount", "monthlyPrice", "subscriptionPrice"]);
+  const appPlanCycle = getPlanValue(appPlan, ["billingCycle", "cycle", "interval"], "MONTHLY");
+  const appPlanStatus = getPlanValue(appPlan, ["status"], appPlan ? t.active : t.disabled);
+  const appPlanNextPayment = getPlanValue(appPlan, ["nextPaymentDate", "nextBillingDate", "renewalDate", "currentPeriodEnd"]);
+  const appPlanStartedAt = getPlanValue(appPlan, ["startedAt", "createdAt", "startDate"]);
+
+  useEffect(() => {
+    setPushNotificationsEnabled(window.localStorage.getItem(notificationsStorageKey) === "enabled");
+  }, [notificationsStorageKey]);
 
   const resetDraft = () => {
     setForm({
@@ -201,24 +277,28 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
     setSaved(false);
   };
 
-  const saveProfile = async (nextForm) => {
-    setProfileError("");
-    setSaved(false);
-
+  const validateProfile = (nextForm) => {
     if (!nextForm.name.trim()) {
       setProfileError(t.nameRequired);
-      throw new Error(t.nameRequired);
+      return false;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextForm.email.trim())) {
       setProfileError(t.invalidEmail);
-      throw new Error(t.invalidEmail);
+      return false;
     }
 
     if (!isValidOptionalAvatarValue(nextForm.avatarUrl)) {
       setProfileError(t.avatarUrlInvalid);
-      throw new Error(t.avatarUrlInvalid);
+      return false;
     }
+
+    return true;
+  };
+
+  const saveProfile = async (nextForm) => {
+    setProfileError("");
+    setSaved(false);
 
     try {
       setSaving(true);
@@ -246,10 +326,27 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
+
+    setProfileError("");
+    setSaved(false);
+
+    if (!validateProfile(form)) {
+      return;
+    }
+
+    setPendingProfileSave({ ...form });
+  };
+
+  const confirmProfileSave = async () => {
+    if (!pendingProfileSave) {
+      return;
+    }
+
     try {
-      await saveProfile(form);
+      await saveProfile(pendingProfileSave);
+      setPendingProfileSave(null);
     } catch {
-      // Errors are already surfaced in the profile UI.
+      setPendingProfileSave(null);
     }
   };
 
@@ -269,52 +366,104 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
     setIsEditing(false);
   };
 
-  const handleLogout = async () => {
-    setLogoutError("");
+  const togglePushNotifications = () => {
+    setSupportMessage("");
+    setPushNotificationsEnabled((enabled) => {
+      const nextEnabled = !enabled;
+      window.localStorage.setItem(notificationsStorageKey, nextEnabled ? "enabled" : "disabled");
+      return nextEnabled;
+    });
+  };
+
+  const requestPasswordReset = async () => {
+    setForgotPasswordConfirmationOpen(false);
+    setSupportMessage("");
     try {
-      await logout();
+      await forgotPassword?.({ email: user.email });
+      setSupportMessage(t.passwordResetEmailSent);
     } catch (err) {
-      setLogoutError(err.message || t.logoutFailed);
+      setSupportMessage(err.message || t.logoutFailed);
     }
   };
 
+  const openSupportEmail = () => {
+    window.location.href = `mailto:support@subscription-manager.local?subject=${encodeURIComponent(t.supportSection)}`;
+  };
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F8F9FB] px-4 pb-24 pt-8 text-slate-900 sm:px-5 lg:min-h-0 lg:px-0 lg:pb-8 lg:pt-0">
-      <section className="mx-auto max-w-xl">
-        <header className="mb-5 text-center lg:mb-8">
-          <div className="group relative mx-auto size-24 lg:size-28">
-            <UserAvatar
-              user={previewUser}
-              className="size-full border-4 border-white bg-[#7047EB] text-white shadow-[0_14px_30px_-12px_rgba(112,71,235,0.65)]"
-              textClassName="text-3xl lg:text-4xl"
-            />
-            {isEditing && (
-              <button
-                type="button"
-                aria-label={editAvatarLabel}
-                onClick={() => setAvatarModalOpen(true)}
-                className="absolute bottom-0 right-0 grid size-9 place-items-center rounded-full border-4 border-[#F8F9FB] bg-[#7047EB] text-white shadow-[0_10px_24px_-12px_rgba(112,71,235,0.75)] transition hover:bg-[#6338DF] active:scale-95 lg:bottom-1 lg:right-1 lg:size-10"
-              >
-                <i className="ph-bold ph-pencil-simple text-sm" />
-              </button>
+    <div className="h-[100svh] overflow-hidden bg-[#F8F9FB] px-4 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] pt-5 text-slate-900 sm:px-5 lg:h-full lg:px-0 lg:pb-0 lg:pt-0">
+      <section className="mx-auto flex h-full max-w-xl flex-col justify-center gap-3 lg:grid lg:max-w-none lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)] lg:items-stretch lg:gap-6">
+        <header className="shrink-0 rounded-[28px] border border-slate-100 bg-white p-5 text-left shadow-[0_18px_42px_-32px_rgba(15,23,42,0.35)] lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:p-7">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400">{t.subscriptionDetails}</p>
+            {appPlan ? (
+              <div className="mt-4 grid gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-2xl font-black tracking-tight text-slate-950">{appPlanName}</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">{t.currentPlan}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[#F4F0FF] px-3 py-1.5 text-xs font-black uppercase text-[#7047EB]">{appPlanStatus}</span>
+                </div>
+                <div className="rounded-[24px] bg-[#F4F0FF] p-4">
+                  <p className="text-3xl font-black text-[#7047EB]">
+                    {appPlanPrice !== null ? formatMoney(appPlanPrice) : "-"}
+                    <span className="ml-1 text-sm font-black text-[#7047EB]/60">/ {t[cycleLabels[String(appPlanCycle).toUpperCase()]] ?? appPlanCycle}</span>
+                  </p>
+                </div>
+                <div className="grid gap-3 text-sm font-semibold text-slate-500">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{t.nextPayment}</span>
+                    <span className="text-right font-black text-slate-900">{formatPlanDate(appPlanNextPayment)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{t.startedOn}</span>
+                    <span className="text-right font-black text-slate-900">{formatPlanDate(appPlanStartedAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{t.paymentStatus}</span>
+                    <span className="text-right font-black text-slate-900">{appPlanStatus}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSupportModalOpen(true)}
+                  className="rounded-[16px] border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 transition hover:bg-rose-100 active:scale-[0.98]"
+                >
+                  {t.cancelPlan}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-4">
+                <div className="rounded-[24px] bg-[#F4F0FF] p-4">
+                  <p className="text-xs font-black uppercase tracking-wide text-[#7047EB]/60">{t.currentPlan}</p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">{t.freePlan}</p>
+                  <p className="mt-3 text-3xl font-black text-[#7047EB]">{formatMoney(0)}</p>
+                </div>
+                <div className="grid gap-3 text-sm font-semibold text-slate-500">
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{t.paymentStatus}</span>
+                    <span className="text-right font-black text-slate-900">{t.noAppPlanTitle}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{t.nextPayment}</span>
+                    <span className="text-right font-black text-slate-900">{t.noPaymentScheduled}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>{t.cancelPlan}</span>
+                    <span className="text-right font-black text-slate-900">{t.noCancellationNeeded}</span>
+                  </div>
+                </div>
+                <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500">{t.noAppPlanHelp}</p>
+              </div>
             )}
-          </div>
-          <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 lg:mt-5 lg:text-3xl">{t.profile}</h1>
-          <p className="mx-auto mt-1 max-w-full break-all px-2 text-sm font-semibold text-slate-500">{previewUser.email}</p>
-          <div className="mt-3 flex justify-center gap-2 lg:mt-4">
-            <span className="rounded-full bg-[#F4F0FF] px-3 py-1 text-xs font-black uppercase tracking-wide text-[#7047EB]">
-              {user.role}
-            </span>
-            <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wide ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-              {isActive ? t.active : t.inactive}
-            </span>
           </div>
         </header>
 
-        <section className="grid gap-3 lg:gap-4">
-          <div className="rounded-[22px] border border-slate-100 bg-white p-4 shadow-[0_6px_24px_-16px_rgba(15,23,42,0.25)] lg:rounded-[24px] lg:p-5">
+        <section className="grid min-h-0 shrink gap-3 lg:grid-rows-[minmax(0,1fr)_auto_auto_auto] lg:gap-6">
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:rounded-[28px] lg:p-8">
             {isEditing ? (
-              <form className="grid gap-3.5 lg:gap-4" onSubmit={handleProfileSubmit} noValidate>
+              <form className="grid gap-3 lg:grid-cols-2 lg:gap-4" onSubmit={handleProfileSubmit} noValidate>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</label>
                   <input
@@ -336,14 +485,9 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
                   />
                 </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.role}</p>
-                  <p className="mt-1 text-base font-black text-slate-900">{user.role}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{t.profileProtectedFields}</p>
-                </div>
-                {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{profileError}</p>}
-                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{t.profileSaved}</p>}
-                <div className="grid grid-cols-2 gap-3">
+                {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700 lg:col-span-2">{profileError}</p>}
+                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 lg:col-span-2">{t.profileSaved}</p>}
+                <div className="grid grid-cols-2 gap-3 lg:col-span-2">
                   <button
                     type="button"
                     onClick={cancelEditing}
@@ -362,25 +506,20 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
                 </div>
               </form>
             ) : (
-              <div className="grid gap-3.5 lg:gap-4">
+              <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</p>
-                  <p className="mt-1 break-words text-sm font-black text-slate-900">{form.name || "-"}</p>
+                  <p className="mt-1 break-words text-sm font-black text-slate-900 lg:text-lg">{form.name || "-"}</p>
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</p>
-                  <p className="mt-1 break-all text-sm font-black text-slate-900">{form.email || "-"}</p>
+                  <p className="mt-1 break-all text-sm font-black text-slate-900 lg:text-lg">{form.email || "-"}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.role}</p>
-                  <p className="mt-1 text-base font-black text-slate-900">{user.role}</p>
-                  <p className="mt-1 text-xs font-semibold text-slate-500">{t.profileProtectedFields}</p>
-                </div>
-                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{t.profileSaved}</p>}
+                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 lg:col-span-2">{t.profileSaved}</p>}
                 <button
                   type="button"
                   onClick={startEditing}
-                  className="rounded-[16px] bg-[#7047EB] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] lg:rounded-[18px] lg:py-4"
+                  className="rounded-[16px] bg-[#7047EB] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] lg:col-span-2 lg:rounded-[18px] lg:py-4"
                 >
                   {editProfileLabel}
                 </button>
@@ -388,8 +527,8 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
             )}
           </div>
 
-          <div className="rounded-[22px] border border-slate-100 bg-white p-4 shadow-[0_6px_24px_-16px_rgba(15,23,42,0.25)] lg:rounded-[24px] lg:p-5">
-            <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.preferences}</p>
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:rounded-[28px] lg:p-6">
+            <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.preferences}</p>
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-black text-slate-900">{t.language}</p>
@@ -403,7 +542,7 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
                   onChange={(event) => setLanguage(event.target.value)}
                   className="h-12 w-full appearance-none rounded-2xl border border-[#7047EB]/10 bg-[#F4F0FF] pl-10 pr-9 text-sm font-black uppercase text-[#7047EB] shadow-[0_10px_24px_-20px_rgba(112,71,235,0.9)] outline-none transition hover:bg-white focus:border-[#7047EB]/40 focus:bg-white focus:ring-4 focus:ring-[#7047EB]/10"
                 >
-                  {languageOptions.map((option) => (
+                  {SUPPORTED_LANGUAGES.map((option) => (
                     <option key={option} value={option}>{option.toUpperCase()}</option>
                   ))}
                 </select>
@@ -412,28 +551,92 @@ export function ProfilePage({ t, user, language, setLanguage, logout, updateProf
             </div>
           </div>
 
-          {logoutError && <p className="rounded-2xl bg-rose-50 p-4 text-sm font-bold text-rose-700">{logoutError}</p>}
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:rounded-[28px] lg:p-6">
+            <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.supportSection}</p>
+            <div className="grid gap-2.5 lg:grid-cols-3 lg:gap-3">
+              <button
+                type="button"
+                onClick={() => setSupportModalOpen(true)}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-slate-900">{t.contactSupport}</span>
+                  <span className="block truncate text-xs font-semibold text-slate-500">{t.supportHelp}</span>
+                </span>
+                <i className="ph-bold ph-lifebuoy shrink-0 text-lg text-[#7047EB]" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setForgotPasswordConfirmationOpen(true)}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-slate-900">{t.forgotPassword}</span>
+                  <span className="block truncate text-xs font-semibold text-slate-500">{t.forgotPasswordProfileHelp}</span>
+                </span>
+                <i className="ph-bold ph-key shrink-0 text-lg text-[#7047EB]" />
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={pushNotificationsEnabled}
+                onClick={togglePushNotifications}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-slate-900">{t.pushNotifications}</span>
+                  <span className="block truncate text-xs font-semibold text-slate-500">{pushNotificationsEnabled ? t.enabled : t.disabled}</span>
+                </span>
+                <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${pushNotificationsEnabled ? "bg-[#7047EB]" : "bg-slate-300"}`}>
+                  <span className={`absolute top-1 grid size-5 place-items-center rounded-full bg-white shadow-sm transition ${pushNotificationsEnabled ? "left-6" : "left-1"}`} />
+                </span>
+              </button>
+            </div>
+            {supportMessage && <p role="status" className="mt-2.5 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{supportMessage}</p>}
+          </div>
 
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-[16px] bg-slate-900 px-5 py-3.5 text-sm font-black text-white transition hover:bg-slate-800 active:scale-[0.98] lg:rounded-[18px] lg:py-4"
-            onClick={handleLogout}
-          >
-            <i className="ph-bold ph-sign-out text-lg" />
-            {t.logout}
-          </button>
         </section>
       </section>
       {avatarModalOpen && (
         <AvatarPhotoModal
           t={t}
-          language={language}
           user={previewUser}
           value={form.avatarUrl}
           saving={saving}
           onClose={() => setAvatarModalOpen(false)}
           onSave={saveAvatarFromModal}
           onRemove={() => saveAvatarFromModal("")}
+        />
+      )}
+      {pendingProfileSave && (
+        <ConfirmationModal
+          title={t.profileConfirmSaveTitle}
+          message={t.profileConfirmSaveMessage}
+          cancelLabel={t.cancel}
+          confirmLabel={t.profileConfirmSaveAction}
+          loading={saving}
+          onCancel={() => setPendingProfileSave(null)}
+          onConfirm={confirmProfileSave}
+        />
+      )}
+      {supportModalOpen && (
+        <ConfirmationModal
+          title={t.supportModalTitle}
+          message={t.supportModalMessage}
+          cancelLabel={t.cancel}
+          confirmLabel={t.supportEmailAction}
+          onCancel={() => setSupportModalOpen(false)}
+          onConfirm={openSupportEmail}
+        />
+      )}
+      {forgotPasswordConfirmationOpen && (
+        <ConfirmationModal
+          title={t.forgotPasswordConfirmTitle}
+          message={t.forgotPasswordConfirmMessage.replace("{email}", user.email)}
+          cancelLabel={t.cancel}
+          confirmLabel={t.sendResetLink}
+          onCancel={() => setForgotPasswordConfirmationOpen(false)}
+          onConfirm={requestPasswordReset}
         />
       )}
     </div>

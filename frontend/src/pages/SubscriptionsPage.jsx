@@ -3,6 +3,7 @@ import { apiRequest } from "../api/client.js";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionModal } from "../components/SubscriptionModal.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
+import { translateCategoryName } from "../i18n/dictionaries.js";
 import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
 
 const filterOptions = [
@@ -54,7 +55,7 @@ function SubscriptionCard({ t, sub, onEdit, onArchive, onDeletePermanent }) {
           <SubscriptionLogo name={sub.name} className="size-10 rounded-xl" muted={isArchived || isPaused} />
           <div className="min-w-0">
             <h3 className="truncate text-[15px] font-bold leading-tight text-slate-900">{sub.name}</h3>
-            <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{sub.category?.name ?? t.categoryPlaceholder} · {cycleLabel}</p>
+            <p className="mt-0.5 truncate text-[13px] font-medium text-slate-500">{translateCategoryName(sub.category?.name, t)} · {cycleLabel}</p>
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">

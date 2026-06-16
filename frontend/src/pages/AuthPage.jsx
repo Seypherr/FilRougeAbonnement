@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { SUPPORTED_LANGUAGES } from "../i18n/dictionaries.js";
 
 function isStrictEmail(value) {
   const email = value.trim().toLowerCase();
@@ -7,6 +8,12 @@ function isStrictEmail(value) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return false;
   const domain = email.split("@")[1] ?? "";
   return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(domain);
+}
+
+function getNextLanguage(language) {
+  const currentIndex = SUPPORTED_LANGUAGES.indexOf(language);
+  const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % SUPPORTED_LANGUAGES.length : 0;
+  return SUPPORTED_LANGUAGES[nextIndex];
 }
 
 export function AuthPage({ t, language, setLanguage }) {
@@ -18,14 +25,7 @@ export function AuthPage({ t, language, setLanguage }) {
     return "login";
   });
   const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [questionnaire, setQuestionnaire] = useState({
-    currency: "EUR",
-    discoverySource: "tiktok",
-    discoveryOther: "",
-    wantsNotifications: false,
-    acceptedPrivacy: false,
-    stayConnected: true
-  });
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,11 +34,6 @@ export function AuthPage({ t, language, setLanguage }) {
   const isRegisterMode = mode === "register";
   const isPasswordMode = mode === "login" || mode === "register" || mode === "reset";
   const token = new URLSearchParams(window.location.search).get("token") ?? "";
-
-  const updateQuestionnaire = (field, value) => {
-    setQuestionnaire((prev) => ({ ...prev, [field]: value }));
-    setError("");
-  };
 
   useEffect(() => {
     if (mode !== "verify") return undefined;
@@ -71,7 +66,7 @@ export function AuthPage({ t, language, setLanguage }) {
     event.preventDefault();
     setError("");
     setMessage("");
-    if (isRegisterMode && !questionnaire.acceptedPrivacy) {
+    if (isRegisterMode && !acceptedPrivacy) {
       setError(t.privacyRequired);
       return;
     }
@@ -117,7 +112,7 @@ export function AuthPage({ t, language, setLanguage }) {
           <button
             type="button"
             className="flex min-h-10 items-center gap-2 rounded-2xl border border-[#7047EB]/10 bg-[#F4F1FF] px-3.5 text-sm font-black text-[#7047EB] shadow-[0_8px_20px_-16px_rgba(112,71,235,0.6)] transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_12px_24px_-18px_rgba(112,71,235,0.9)] focus:outline-none focus:ring-4 focus:ring-[#7047EB]/10"
-            onClick={() => setLanguage(language === "fr" ? "en" : "fr")}
+            onClick={() => setLanguage(getNextLanguage(language))}
           >
             <span className="grid size-6 place-items-center rounded-full bg-white text-[#7047EB]">
               <i className="ph ph-globe text-sm" />
@@ -170,77 +165,6 @@ export function AuthPage({ t, language, setLanguage }) {
                   required
                 />
               </div>
-            )}
-
-            {isRegisterMode && (
-              <section className="grid gap-4 rounded-[28px] border border-[#EAECEF] bg-[#F8F9FB] p-4">
-                <div>
-                  <p className="mb-2 ml-1 text-sm font-semibold text-[#1B1D28]">{t.currencyQuestion}</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[
-                      ["EUR", "€"],
-                      ["USD", "$"],
-                      ["GBP", "£"],
-                      ["OTHER", t.other]
-                    ].map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => updateQuestionnaire("currency", value)}
-                        className={`rounded-2xl border px-2 py-2.5 text-sm font-black transition-all ${questionnaire.currency === value ? "border-[#7047EB] bg-[#7047EB] text-white shadow-[0_10px_24px_-18px_rgba(112,71,235,0.9)]" : "border-[#EAECEF] bg-white text-[#8E95A9] hover:text-[#1B1D28]"}`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-2 ml-1 block text-sm font-semibold text-[#1B1D28]" htmlFor="discovery-source">{t.discoveryQuestion}</label>
-                  <select
-                    id="discovery-source"
-                    aria-label={t.discoveryQuestion}
-                    value={questionnaire.discoverySource}
-                    onChange={(event) => updateQuestionnaire("discoverySource", event.target.value)}
-                    className="block w-full rounded-2xl border-2 border-[#EAECEF] bg-white px-4 py-3 text-sm font-bold text-[#1B1D28] outline-none transition-all focus:border-[#7047EB] focus:ring-4 focus:ring-[#7047EB]/20"
-                  >
-                    <option value="tiktok">TikTok</option>
-                    <option value="friends">{t.friends}</option>
-                    <option value="network">{t.network}</option>
-                    <option value="ads">{t.advertising}</option>
-                    <option value="other">{t.other}</option>
-                  </select>
-                  {questionnaire.discoverySource === "other" && (
-                    <input
-                      aria-label={t.discoveryOther}
-                      value={questionnaire.discoveryOther}
-                      onChange={(event) => updateQuestionnaire("discoveryOther", event.target.value)}
-                      placeholder={t.discoveryOtherPlaceholder}
-                      className="mt-3 block w-full rounded-2xl border-2 border-[#EAECEF] bg-white px-4 py-3 text-sm font-medium text-[#1B1D28] outline-none transition-all focus:border-[#7047EB] focus:ring-4 focus:ring-[#7047EB]/20"
-                    />
-                  )}
-                </div>
-
-                <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-[#1B1D28]">
-                  <input
-                    type="checkbox"
-                    checked={questionnaire.wantsNotifications}
-                    onChange={(event) => updateQuestionnaire("wantsNotifications", event.target.checked)}
-                    className="mt-1 size-4 accent-[#7047EB]"
-                  />
-                  <span>{t.notificationsQuestion}</span>
-                </label>
-
-                <label className="flex items-start gap-3 rounded-2xl bg-white p-3 text-sm font-bold text-[#1B1D28]">
-                  <input
-                    type="checkbox"
-                    checked={questionnaire.acceptedPrivacy}
-                    onChange={(event) => updateQuestionnaire("acceptedPrivacy", event.target.checked)}
-                    className="mt-1 size-4 accent-[#7047EB]"
-                  />
-                  <span>{t.acceptPrivacy}</span>
-                </label>
-              </section>
             )}
 
             {mode !== "reset" && mode !== "verify" && <div>
@@ -299,14 +223,17 @@ export function AuthPage({ t, language, setLanguage }) {
               </div>
             </div>}
 
-            {["login", "register"].includes(mode) && <label className="flex items-center gap-3 px-1 text-sm font-bold text-[#1B1D28]">
+            {isRegisterMode && <label className="flex items-start gap-3 rounded-2xl border border-[#EAECEF] bg-[#F8F9FB] p-3 text-sm font-bold text-[#1B1D28]">
               <input
                 type="checkbox"
-                checked={questionnaire.stayConnected}
-                onChange={(event) => updateQuestionnaire("stayConnected", event.target.checked)}
-                className="size-4 accent-[#7047EB]"
+                checked={acceptedPrivacy}
+                onChange={(event) => {
+                  setAcceptedPrivacy(event.target.checked);
+                  setError("");
+                }}
+                className="mt-1 size-4 accent-[#7047EB]"
               />
-              <span>{t.stayConnected}</span>
+              <span>{t.acceptPrivacy}</span>
             </label>}
 
             {error && <p className="rounded-2xl bg-[#FFF0F3] p-3 text-sm font-semibold text-[#FF3E5D]">{error}</p>}

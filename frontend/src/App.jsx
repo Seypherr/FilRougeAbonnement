@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { AppShell } from "./components/AppShell.jsx";
+import { OnboardingCarousel } from "./components/OnboardingCarousel.jsx";
 import { SubscriptionModal } from "./components/SubscriptionModal.jsx";
 import { apiRequest } from "./api/client.js";
 import { useAuth } from "./context/AuthContext.jsx";
 import { useSubscriptions } from "./hooks/useSubscriptions.js";
-import { dictionaries } from "./i18n/dictionaries.js";
+import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, getDictionary, normalizeLanguage } from "./i18n/dictionaries.js";
 import { AdminPage } from "./pages/AdminPage.jsx";
 import { AnalyticsPage } from "./pages/AnalyticsPage.jsx";
 import { AuthPage } from "./pages/AuthPage.jsx";
@@ -14,14 +15,35 @@ import { EmailVerificationRequiredPage } from "./pages/EmailVerificationRequired
 import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { SubscriptionsPage } from "./pages/SubscriptionsPage.jsx";
 
+function hasCompletedOnboarding(storageKey) {
+  return Boolean(storageKey) && window.localStorage.getItem(storageKey) === "completed";
+}
+
 export function App() {
-  const [language, setLanguage] = useState("fr");
+  const [language, setLanguageState] = useState(() => normalizeLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ?? DEFAULT_LANGUAGE));
   const [tab, setTab] = useState("dashboard");
   const [toast, setToast] = useState(null);
   const [modalState, setModalState] = useState({ open: false, subscription: null });
-  const t = dictionaries[language] ?? dictionaries.en;
-  const { user, loading, logout, resendVerification, updateProfile } = useAuth();
+  const [onboardingState, setOnboardingState] = useState({ key: "", completed: false });
+  const t = getDictionary(language);
+  const { user, forgotPassword, loading, logout, resendVerification, updateProfile } = useAuth();
   const subscriptionState = useSubscriptions("", Boolean(user && user.emailVerified !== false));
+  const onboardingStorageKey = user ? `subscription-manager:onboarding:v1:${user.id ?? user.email}` : "";
+
+  const setLanguage = (nextLanguage) => {
+    const normalizedLanguage = normalizeLanguage(nextLanguage);
+    setLanguageState(normalizedLanguage);
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalizedLanguage);
+  };
+
+  useEffect(() => {
+    if (!onboardingStorageKey) {
+      setOnboardingState({ key: "", completed: false });
+      return;
+    }
+
+    setOnboardingState({ key: onboardingStorageKey, completed: hasCompletedOnboarding(onboardingStorageKey) });
+  }, [onboardingStorageKey]);
 
   const notify = (message, type = "success") => {
     setToast({ message, type });
@@ -65,6 +87,20 @@ export function App() {
         logout={logout}
       />
     );
+  }
+
+  const completeOnboarding = (answers) => {
+    window.localStorage.setItem(onboardingStorageKey, "completed");
+    window.localStorage.setItem(`${onboardingStorageKey}:answers`, JSON.stringify(answers));
+    setOnboardingState({ key: onboardingStorageKey, completed: true });
+  };
+
+  const onboardingCompleted = onboardingState.key === onboardingStorageKey
+    ? onboardingState.completed
+    : hasCompletedOnboarding(onboardingStorageKey);
+
+  if (!onboardingCompleted) {
+    return <OnboardingCarousel t={t} onComplete={completeOnboarding} />;
   }
 
   const navItems = [
@@ -137,7 +173,7 @@ export function App() {
           user={user}
           language={language}
           setLanguage={setLanguage}
-          logout={logout}
+          forgotPassword={forgotPassword}
           updateProfile={updateProfile}
         />
       )}

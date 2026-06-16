@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
+import { getLanguageLocale, translateCategoryName } from "../i18n/dictionaries.js";
 import { formatMoney, getSubscriptionStats } from "../utils/subscriptions.js";
 
 const colors = ["#8255FF", "#0055FF", "#00C48C", "#CBD5E1", "#F59E0B"];
@@ -24,7 +25,7 @@ function CategoryBar({ name, amount, width, color }) {
 
 function formatRenewalDate(value, language) {
   if (!value) return "-";
-  return new Intl.DateTimeFormat(language === "en" ? "en-US" : "fr-FR", {
+  return new Intl.DateTimeFormat(getLanguageLocale(language), {
     day: "2-digit",
     month: "long",
     year: "numeric"
@@ -68,7 +69,7 @@ function HighestSubscriptionModal({ t, language, subscription, onClose }) {
               <SubscriptionLogo name={subscription.name} className="size-16 rounded-2xl" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-lg font-black text-slate-950">{subscription.name}</p>
-                <p className="mt-1 text-sm font-semibold text-slate-500">{subscription.category?.name ?? t.other}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-500">{translateCategoryName(subscription.category?.name, t)}</p>
               </div>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -204,7 +205,7 @@ export function AnalyticsPage({ t, language = "fr", subscriptions, totalMonthlyA
             <StatePanel title={t.emptyAnalyticsTitle} message={t.emptyAnalyticsMessage} tone="empty" icon="ph-chart-pie-slice" />
           ) : (
             categoryEntries.map(([name, value], index) => (
-              <CategoryBar key={name} name={name} amount={formatMoney(value)} width={`${Math.max((value / maxCategory) * 100, 6)}%`} color={colors[index % colors.length]} />
+              <CategoryBar key={name} name={translateCategoryName(name, t)} amount={formatMoney(value)} width={`${Math.max((value / maxCategory) * 100, 6)}%`} color={colors[index % colors.length]} />
             ))
           )}
         </div>
@@ -221,7 +222,7 @@ export function AnalyticsPage({ t, language = "fr", subscriptions, totalMonthlyA
                 <SubscriptionLogo name={item.name} className="size-10 rounded-full" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-bold text-slate-800">{item.name}</p>
-                  <p className="truncate text-[13px] font-medium text-slate-500">{item.category?.name ?? t.other}</p>
+                  <p className="truncate text-[13px] font-medium text-slate-500">{translateCategoryName(item.category?.name, t)}</p>
                 </div>
                 <p className="shrink-0 text-[15px] font-bold text-slate-800">{formatMoney(item.monthlyAmount)}</p>
               </div>

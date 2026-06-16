@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SubscriptionLogo } from "./SubscriptionLogo.jsx";
+import { apiRequest } from "../api/client.js";
+import { getLanguageLocale, normalizeLanguage } from "../i18n/dictionaries.js";
 import {
   getPaymentMethodLogo,
   getPaymentMethodSuggestions,
@@ -64,6 +66,18 @@ function formatEuroHints(prices = []) {
   return prices.map((price) => `${String(price).replace(".", ",")} €`).join(" / ");
 }
 
+function getCatalogLogoPayload(service) {
+  if (!service?.url) return null;
+
+  return {
+    brand: service.brand ?? service.name,
+    domain: service.domain,
+    hasLogo: Boolean(service.domain),
+    url: service.url,
+    fallbackUrl: service.fallbackUrl
+  };
+}
+
 function applyPriceShortcut(value, shortcut) {
   const numeric = parsePrice(value);
   const base = Number.isFinite(numeric) && numeric > 0 ? Math.floor(numeric) : 0;
@@ -73,15 +87,95 @@ function applyPriceShortcut(value, shortcut) {
 }
 
 function ServiceNameInput({ t, value, error, onChange, onSelectService }) {
+  const listboxId = useId();
   const [focused, setFocused] = useState(false);
-  const suggestions = getServiceSuggestions(value, 6);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [catalogSuggestions, setCatalogSuggestions] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const localSuggestions = getServiceSuggestions(value, 6);
+  const suggestions = catalogSuggestions.length > 0 ? catalogSuggestions : localSuggestions;
   const hasSearch = normalizeSearchValue(value).length >= 2;
   const showSuggestions = focused && suggestions.length > 0;
   const showUnknown = focused && hasSearch && suggestions.length === 0;
+  const activeSuggestion = suggestions[activeIndex] ?? suggestions[0];
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [value]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!focused || normalizeSearchValue(value).length < 2) {
+      setCatalogSuggestions([]);
+      setCatalogLoading(false);
+      return undefined;
+    }
+
+    setCatalogLoading(true);
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ search: value, limit: "8" });
+        const data = await apiRequest(`/catalog/subscriptions?${params.toString()}`);
+        if (!cancelled) {
+          setCatalogSuggestions(Array.isArray(data.services) ? data.services : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setCatalogSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setCatalogLoading(false);
+        }
+      }
+    }, 140);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [focused, value]);
 
   const selectSuggestion = (service) => {
     onSelectService(service);
     setFocused(false);
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape") {
+      setFocused(false);
+      return;
+    }
+
+    if (!showSuggestions) {
+      if (event.key === "ArrowDown" && suggestions.length > 0) {
+        setFocused(true);
+      }
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex((current) => (current + 1) % suggestions.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex((current) => (current - 1 + suggestions.length) % suggestions.length);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      selectSuggestion(activeSuggestion);
+      return;
+    }
+
+    if (event.key === "Tab" && activeSuggestion) {
+      selectSuggestion(activeSuggestion);
+    }
   };
 
   return (
@@ -89,32 +183,43 @@ function ServiceNameInput({ t, value, error, onChange, onSelectService }) {
       <input
         aria-label={t.name}
         aria-invalid={Boolean(error)}
+        aria-controls={showSuggestions ? listboxId : undefined}
+        aria-activedescendant={showSuggestions ? `${listboxId}-${activeIndex}` : undefined}
         aria-autocomplete="list"
+        aria-expanded={showSuggestions}
+        role="combobox"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => window.setTimeout(() => setFocused(false), 120)}
+        onKeyDown={handleKeyDown}
         placeholder="e.g. Spotify"
         className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-[14px] font-medium text-slate-900 outline-none transition-all focus:border-slate-400 focus:bg-white focus:ring-4 focus:ring-slate-100"
       />
       {showSuggestions && (
-        <div className="floating-menu-enter absolute left-0 right-0 top-[calc(100%+8px)] z-30 rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.45)]">
-          <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">{t.serviceSuggestions}</p>
-          <div className="grid gap-1">
-            {suggestions.map((service) => (
+        <div id={listboxId} role="listbox" className="floating-menu-enter absolute left-0 right-0 top-[calc(100%+8px)] z-30 max-h-[min(320px,45vh)] overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_-20px_rgba(15,23,42,0.45)]">
+          <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            {t.serviceSuggestions}{catalogLoading ? "..." : ""}
+          </p>
+          <div className="grid max-h-[calc(min(320px,45vh)-34px)] gap-1 overflow-y-auto pr-1 no-scrollbar">
+            {suggestions.map((service, index) => (
               <button
                 key={service.name}
+                id={`${listboxId}-${index}`}
                 type="button"
+                role="option"
+                aria-selected={index === activeIndex}
                 aria-label={`${t.chooseService} ${service.name}`}
                 onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => selectSuggestion(service)}
-                className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-slate-50 active:scale-[0.99]"
+                className={`flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition active:scale-[0.99] ${index === activeIndex ? "bg-[#F4F0FF] ring-1 ring-[#7047EB]/10" : "hover:bg-slate-50"}`}
               >
-                <SubscriptionLogo name={service.name} className="size-8 rounded-lg" />
+                <SubscriptionLogo name={service.name} logoOverride={getCatalogLogoPayload(service)} className="size-8 rounded-lg" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-black text-slate-800">{service.name}</span>
                   <span className="block truncate text-[11px] font-semibold text-slate-400">
-                    {[service.category, formatEuroHints(service.priceHints)].filter(Boolean).join(" · ")}
+                    {[service.category, service.plan, formatEuroHints(service.priceHints)].filter(Boolean).join(" · ")}
                   </span>
                 </span>
                 <span className="hidden truncate text-[11px] font-semibold text-slate-400 sm:block">{service.domain}</span>
@@ -219,7 +324,7 @@ function formatSelectedDate(value, language) {
     return "";
   }
 
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-US", {
+  return new Intl.DateTimeFormat(getLanguageLocale(language), {
     day: "2-digit",
     month: "long",
     year: "numeric"
@@ -241,7 +346,7 @@ function formatDateValue(date) {
 }
 
 function getMonthLabel(date, language) {
-  return new Intl.DateTimeFormat(language === "fr" ? "fr-FR" : "en-US", {
+  return new Intl.DateTimeFormat(getLanguageLocale(language), {
     month: "long",
     year: "numeric"
   }).format(date);
@@ -285,7 +390,12 @@ function CalendarPanel({ t, language, value, visibleMonth, setVisibleMonth, onSe
   const today = new Date();
   const todayValue = formatDateValue(today);
   const calendarDays = mobile ? getCurrentMonthDays(visibleMonth) : getCalendarDays(visibleMonth);
-  const weekDays = language === "fr" ? ["L", "M", "M", "J", "V", "S", "D"] : ["M", "T", "W", "T", "F", "S", "S"];
+  const weekDaysByLanguage = {
+    en: ["M", "T", "W", "T", "F", "S", "S"],
+    es: ["L", "M", "X", "J", "V", "S", "D"],
+    fr: ["L", "M", "M", "J", "V", "S", "D"]
+  };
+  const weekDays = weekDaysByLanguage[normalizeLanguage(language)];
 
   return (
     <div data-calendar-panel="true" className={`${mobile ? "animate-[calendar-sheet_180ms_ease-out] rounded-[22px] p-2.5" : "animate-[calendar-pop_160ms_ease-out] rounded-[20px] p-3"} border border-slate-200 bg-white shadow-[0_22px_60px_-24px_rgba(15,23,42,0.45)]`}>
@@ -520,6 +630,8 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
   const [form, setForm] = useState(toFormData(subscription ?? emptySubscription));
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [autoCompletedPrice, setAutoCompletedPrice] = useState("");
+  const [autoCompletedCategoryId, setAutoCompletedCategoryId] = useState("");
   const [saved, setSaved] = useState(false);
   const isEditing = Boolean(subscription);
 
@@ -528,9 +640,19 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
     if (!normalizedTarget) return "";
 
     const aliases = {
+      ai: ["ai", "ia", "intelligence artificielle"],
+      cloud: ["cloud"],
+      finance: ["finance", "banque"],
+      gaming: ["gaming", "jeux", "jeu video", "jeux video"],
+      insurance: ["insurance", "assurance", "assurances", "mutuelle"],
       music: ["music", "musique"],
-      streaming: ["streaming"],
+      press: ["press", "presse"],
+      productivity: ["productivity", "productivite"],
+      professional: ["professional", "professionnel", "professionnels"],
       software: ["software", "logiciel", "logiciels"],
+      sports: ["sports", "sport"],
+      streaming: ["streaming"],
+      telecom: ["telecom", "telephonie", "mobile", "internet"],
       fitness: ["fitness", "sport"],
       other: ["other", "autre"]
     };
@@ -541,6 +663,12 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
 
   const change = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    if (field === "price") {
+      setAutoCompletedPrice("");
+    }
+    if (field === "categoryId") {
+      setAutoCompletedCategoryId("");
+    }
     setError("");
     setFieldErrors((prev) => {
       if (!prev[field]) return prev;
@@ -551,19 +679,24 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
 
   const selectServiceSuggestion = (service) => {
     const plan = getServicePlanSuggestion(service.name);
-    const categoryId = findCategoryId(plan?.category);
-    const defaultPrice = plan?.defaultPrice;
+    const categoryId = findCategoryId(service.category ?? plan?.category);
+    const defaultPrice = service.defaultPrice ?? service.priceHints?.[0] ?? plan?.defaultPrice;
+    const defaultPriceValue = defaultPrice !== null && defaultPrice !== undefined ? String(defaultPrice) : "";
 
     setForm((prev) => {
-      const shouldSuggestPrice = !prev.price && defaultPrice !== null && defaultPrice !== undefined;
+      const shouldSuggestPrice = defaultPriceValue && (!prev.price || prev.price === autoCompletedPrice);
+      const shouldSuggestCategory = categoryId && (!prev.categoryId || prev.categoryId === autoCompletedCategoryId);
 
       return {
         ...prev,
         name: service.name,
-        categoryId: prev.categoryId || categoryId || "",
-        price: shouldSuggestPrice ? String(defaultPrice) : prev.price
+        billingCycle: service.billingCycle ?? prev.billingCycle,
+        categoryId: shouldSuggestCategory ? categoryId : prev.categoryId,
+        price: shouldSuggestPrice ? defaultPriceValue : prev.price
       };
     });
+    setAutoCompletedPrice(defaultPriceValue);
+    setAutoCompletedCategoryId(categoryId || "");
     setError("");
     setFieldErrors((prev) => {
       const { name: _name, price: _price, ...rest } = prev;

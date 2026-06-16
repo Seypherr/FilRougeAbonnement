@@ -12,6 +12,7 @@ const navIconMap = {
 
 export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAddSubscription, logout }) {
   const [logoutError, setLogoutError] = useState("");
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
   const mobileItems = [
     ["dashboard", Home],
     ["subscriptions", Grid2X2],
@@ -21,6 +22,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
   ];
 
   const handleSidebarLogout = async () => {
+    setLogoutConfirmationOpen(false);
     setLogoutError("");
     try {
       await logout();
@@ -39,7 +41,6 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
             </div>
             <div>
               <p className="text-lg font-black">{t.appName}</p>
-              <p className="text-xs font-bold text-slate-400">{user.role}</p>
             </div>
           </div>
 
@@ -89,7 +90,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
           <button
             type="button"
             aria-label={t.logoutFromSidebar}
-            onClick={handleSidebarLogout}
+            onClick={() => setLogoutConfirmationOpen(true)}
             className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-rose-100 hover:bg-rose-50 hover:text-rose-700 active:scale-[0.98]"
           >
             <LogOut size={17} />
@@ -99,7 +100,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
       </aside>
 
       <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-48px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0">
-        <div className="mx-auto max-w-7xl lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8">
+        <div className={`mx-auto ${tab === "profile" ? "max-w-none" : "max-w-7xl"} lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8`}>
           <div key={tab} className="page-transition">
             {children}
           </div>
@@ -134,6 +135,47 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
         })}
         </div>
       </nav>
+
+      {logoutConfirmationOpen && (
+        <div
+          className="modal-backdrop-enter fixed inset-0 z-[90] grid place-items-end bg-slate-900/40 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-6"
+          onMouseDown={() => setLogoutConfirmationOpen(false)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sidebar-logout-confirmation-title"
+            className="modal-panel-enter w-full rounded-t-[26px] bg-white p-5 shadow-[0_-14px_42px_-22px_rgba(15,23,42,0.55)] sm:max-w-sm sm:rounded-[26px]"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#F4F0FF] text-[#7047EB]">
+                <LogOut size={18} />
+              </span>
+              <div className="min-w-0">
+                <h2 id="sidebar-logout-confirmation-title" className="text-base font-black text-slate-950">{t.logoutConfirmTitle}</h2>
+                <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">{t.logoutConfirmMessage}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setLogoutConfirmationOpen(false)}
+                className="rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98]"
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleSidebarLogout}
+                className="rounded-[16px] bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98]"
+              >
+                {t.logoutConfirmAction}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <Toast toast={toast} />
     </main>

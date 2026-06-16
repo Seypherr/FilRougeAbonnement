@@ -49,7 +49,7 @@ const subscriptionsResponse = {
       renewalDate: "2026-06-20T00:00:00.000Z",
       status: "ACTIVE",
       categoryId: null,
-      category: { name: "Software" }
+      category: { name: "Logiciels" }
     },
     {
       id: "sub-3",
@@ -60,7 +60,7 @@ const subscriptionsResponse = {
       renewalDate: "2026-06-10T00:00:00.000Z",
       status: "ARCHIVED",
       categoryId: null,
-      category: { name: "Software" }
+      category: { name: "Logiciels" }
     },
     {
       id: "sub-4",
@@ -98,6 +98,8 @@ function getLastButtonByName(name) {
 }
 
 beforeEach(() => {
+  window.localStorage.clear();
+  window.localStorage.setItem("subscription-manager:onboarding:v1:user-1", "completed");
   apiRequest.mockImplementation((path) => {
     if (path.startsWith("/subscriptions")) {
       return Promise.resolve(subscriptionsResponse);
@@ -113,6 +115,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.clearAllMocks();
   vi.restoreAllMocks();
 });
@@ -165,25 +168,30 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Masquer le mot de passe" })).toBeInTheDocument();
   });
 
-  it("shows the registration questionnaire and optional other source field", () => {
+  it("shows and persists the mobile onboarding carousel before the app", () => {
+    window.localStorage.removeItem("subscription-manager:onboarding:v1:user-1");
     useAuth.mockReturnValue({
-      user: null,
+      user,
       loading: false,
-      login: vi.fn(),
-      register: vi.fn()
+      logout: vi.fn()
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Inscription" }));
 
-    expect(screen.getByText("Monnaie utilisée")).toBeInTheDocument();
-    expect(screen.getByLabelText("Comment avez-vous connu l'application ?")).toBeInTheDocument();
-    expect(screen.getByLabelText("Je souhaite recevoir des notifications")).toBeInTheDocument();
-    expect(screen.getByLabelText("J'accepte la politique de confidentialité")).toBeInTheDocument();
-    expect(screen.getByLabelText("Rester connecté")).toBeChecked();
+    expect(screen.getByText("Qu'est-ce que tu veux mieux maîtriser en premier ?")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continuer" })).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText("Comment avez-vous connu l'application ?"), { target: { value: "other" } });
-    expect(screen.getByLabelText("Autre source")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Mes dépenses mensuelles" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Chaque mois" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Assurances et téléphonie" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continuer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Voir les échéances à venir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Terminer" }));
+
+    expect(window.localStorage.getItem("subscription-manager:onboarding:v1:user-1")).toBe("completed");
+    expect(screen.getByText("Tableau de bord")).toBeInTheDocument();
   });
 
   it("requires privacy acceptance before registration without sending questionnaire fields", async () => {
@@ -256,7 +264,7 @@ describe("App", () => {
     await waitFor(() => expect(resendVerification).toHaveBeenCalledTimes(1));
   });
 
-  it("switches the login page from French to English", () => {
+  it("cycles the login page from French to English and Spanish", () => {
     useAuth.mockReturnValue({
       user: null,
       loading: false,
@@ -268,6 +276,30 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "FR" }));
 
     expect(screen.getAllByRole("button", { name: "Login" }).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: "EN" }));
+
+    expect(screen.getAllByRole("button", { name: "Iniciar sesión" }).length).toBeGreaterThan(0);
+  });
+
+  it("persists the selected language after reload", () => {
+    useAuth.mockReturnValue({
+      user: null,
+      loading: false,
+      login: vi.fn(),
+      register: vi.fn()
+    });
+
+    const { unmount } = render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "FR" }));
+    fireEvent.click(screen.getByRole("button", { name: "EN" }));
+
+    expect(window.localStorage.getItem("subscription-manager:language")).toBe("es");
+
+    unmount();
+    render(<App />);
+
+    expect(screen.getAllByRole("button", { name: "Iniciar sesión" }).length).toBeGreaterThan(0);
   });
 
   it("renders the dashboard for an authenticated user", async () => {
@@ -312,7 +344,7 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("0,00 €").length).toBeGreaterThan(0));
     expect(screen.getAllByText("0").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Aucun renouvellement à venir").length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText(/Aucun renouvellement/).length).toBeGreaterThan(0));
   });
 
   it("shows only a small renewal alert dot on the notification bell", async () => {
@@ -350,8 +382,8 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByLabelText("Alertes de renouvellement")).toBeInTheDocument());
-    expect(screen.getByTestId("renewal-alert-dot")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("renewal-alert-dot")).toBeInTheDocument());
+    expect(screen.getByLabelText("Alertes de renouvellement")).toBeInTheDocument();
     expect(screen.queryByText(/alerte disponible/i)).not.toBeInTheDocument();
   });
 
@@ -441,8 +473,8 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
-    await waitFor(() => expect(screen.getAllByText("Abonnements").length).toBeGreaterThan(0));
-    expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
+    expect(screen.getAllByText("Abonnements").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Figma").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Archived Cloud").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Paused Music").length).toBeGreaterThan(0);
@@ -479,7 +511,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ajouter un abonnement" }));
     expect(screen.getByRole("heading", { name: "Ajouter un abonnement" })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fermer la fenetre" }));
+    fireEvent.click(screen.getByRole("button", { name: "Fermer la fenêtre" }));
     expect(screen.queryByRole("heading", { name: "Ajouter un abonnement" })).not.toBeInTheDocument();
   });
 
@@ -533,11 +565,11 @@ describe("App", () => {
     fireEvent.focus(nameInput);
     fireEvent.change(nameInput, { target: { value: "net" } });
 
-    expect(screen.getByRole("button", { name: "Choisir Netflix" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Choisir Netflix" })).toBeInTheDocument();
     expect(screen.getAllByAltText("Netflix logo").length).toBeGreaterThan(0);
     expect(screen.getByText("Streaming · 7,99 € / 14,99 €")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Choisir Netflix" }));
+    fireEvent.click(screen.getByRole("option", { name: "Choisir Netflix" }));
 
     expect(nameInput).toHaveValue("Netflix");
     expect(screen.getByLabelText("Prix")).toHaveValue("7.99");
@@ -776,7 +808,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
     expect(screen.queryByRole("heading", { name: "Ajouter un abonnement" })).not.toBeInTheDocument();
   });
 
@@ -874,7 +906,8 @@ describe("App", () => {
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/subscriptions?status=ACTIVE"));
 
     apiRequest.mockClear();
-    fireEvent.click(screen.getByRole("button", { name: "Archive Netflix" }));
+    const archiveButton = await screen.findByRole("button", { name: "Archive Netflix" });
+    fireEvent.click(archiveButton);
 
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/subscriptions/sub-1", expect.objectContaining({ method: "DELETE" })));
     expect(apiRequest).toHaveBeenCalledWith("/subscriptions?status=ACTIVE");
@@ -983,12 +1016,98 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
     expect(screen.getAllByText(user.email).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(user.role).length).toBeGreaterThan(0);
+    expect(screen.queryByText(user.role)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Déconnexion" }));
+    expect(screen.queryByRole("button", { name: "Déconnexion" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Déconnexion depuis la barre latérale" }));
+    const logoutDialog = screen.getByRole("dialog", { name: "Confirmer la déconnexion" });
+    expect(within(logoutDialog).getByText("Vous allez quitter votre session actuelle.")).toBeInTheDocument();
+    fireEvent.click(within(logoutDialog).getByRole("button", { name: "Se déconnecter" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
+  });
+
+  it("saves push notification preference from the profile page", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    const pushSwitch = await screen.findByRole("switch", { name: /Notifications push/i });
+    expect(pushSwitch).toHaveAttribute("aria-checked", "false");
+
+    fireEvent.click(pushSwitch);
+
+    expect(pushSwitch).toHaveAttribute("aria-checked", "true");
+    expect(window.localStorage.getItem("subscription-manager:push-notifications:user-1")).toBe("enabled");
+  });
+
+  it("requests a password reset from the profile assistance section", async () => {
+    const forgotPassword = vi.fn().mockResolvedValue({});
+    useAuth.mockReturnValue({
+      user,
+      forgotPassword,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await screen.findByRole("button", { name: "Modifier le profil" });
+    fireEvent.click(screen.getByRole("button", { name: /Mot de passe oublié/i }));
+    const resetDialog = screen.getByRole("dialog", { name: "Réinitialiser le mot de passe" });
+    fireEvent.click(within(resetDialog).getByRole("button", { name: "Envoyer le lien" }));
+
+    await waitFor(() => expect(forgotPassword).toHaveBeenCalledWith({ email: user.email }));
+    expect(screen.getByRole("status")).toHaveTextContent("Si un compte existe, un email de réinitialisation a été envoyé.");
+  });
+
+  it("shows an empty app plan state from the profile plans tab", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await screen.findByRole("button", { name: "Modifier le profil" });
+    expect(screen.getAllByText("Aucun plan actif").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Votre compte n'a pas encore d'abonnement actif à l'application.").length).toBeGreaterThan(0);
+  });
+
+  it("shows active app plan details from the profile plans tab", async () => {
+    useAuth.mockReturnValue({
+      user: {
+        ...user,
+        appSubscription: {
+          name: "Premium",
+          price: 9.99,
+          billingCycle: "MONTHLY",
+          status: "Actif",
+          nextPaymentDate: "2026-07-20T00:00:00.000Z",
+          startedAt: "2026-06-20T00:00:00.000Z"
+        }
+      },
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await screen.findByRole("button", { name: "Modifier le profil" });
+    expect(screen.getAllByText("Premium").length).toBeGreaterThan(0);
+    expect(screen.getByText("9,99 €")).toBeInTheDocument();
+    expect(screen.getAllByText(/20 juillet 2026/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Résilier" })).toBeInTheDocument();
   });
 
   it("updates profile name and email without exposing an avatar URL field", async () => {
@@ -1008,14 +1127,17 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
     expect(screen.queryByLabelText("Nom complet")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Modifier profil" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Modifier profil" }));
+    expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Modifier le profil" }));
     fireEvent.change(screen.getByLabelText("Nom complet"), { target: { value: "Ethan Updated" } });
     fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "Ethan.Updated@Test.Local" } });
     expect(screen.queryByLabelText("URL de l'avatar")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+    const saveDialog = screen.getByRole("dialog", { name: "Confirmer les modifications" });
+    expect(within(saveDialog).getByText("Enregistrer les nouvelles informations du profil ?")).toBeInTheDocument();
+    fireEvent.click(within(saveDialog).getByRole("button", { name: "Enregistrer" }));
 
     await waitFor(() => {
       expect(updateProfile).toHaveBeenCalledWith({
@@ -1037,11 +1159,11 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Modifier profil" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Modifier le profil" }));
     fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "preview@test.local" } });
 
-    expect(screen.getByText("preview@test.local")).toBeInTheDocument();
+    expect(screen.getByLabelText("Adresse email")).toHaveValue("preview@test.local");
   });
 
   it("shows a clear profile error when email is already used", async () => {
@@ -1056,10 +1178,11 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Modifier profil" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Modifier le profil" }));
     fireEvent.change(screen.getByLabelText("Adresse email"), { target: { value: "taken@test.local" } });
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Confirmer les modifications" })).getByRole("button", { name: "Enregistrer" }));
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Cette adresse email est déjà utilisée."));
   });
@@ -1076,8 +1199,8 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Modifier profil" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Modifier le profil" }));
 
     fireEvent.change(screen.getByLabelText("Nom complet"), { target: { value: " " } });
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -1102,8 +1225,8 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Modifier profil" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Modifier le profil" }));
     fireEvent.change(screen.getByLabelText("Nom complet"), { target: { value: "Draft Name" } });
     expect(screen.getByLabelText("Nom complet")).toHaveValue("Draft Name");
 
@@ -1124,7 +1247,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
     expect(screen.queryByText("Dépenses mensuelles")).not.toBeInTheDocument();
   });
 
@@ -1140,8 +1263,8 @@ describe("App", () => {
     expect(screen.getAllByRole("button", { name: "Admin" })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
-    expect(screen.getByText("Le rôle et le statut du compte ne peuvent pas être modifiés depuis le profil.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
+    expect(screen.queryByText(/statut du compte/)).not.toBeInTheDocument();
   });
 
   it("keeps bottom navigation actions usable after visiting profile", async () => {
@@ -1154,7 +1277,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
     fireEvent.click(getLastButtonByName("Ajouter un abonnement"));
 
     expect(screen.getByRole("heading", { name: "Ajouter un abonnement" })).toBeInTheDocument();
@@ -1174,8 +1297,8 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getAllByRole("button", { name: "Statistiques" })[0]);
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Retour au dashboard" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Retour au dashboard" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retour au tableau de bord" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Retour au tableau de bord" }));
 
     await waitFor(() => expect(screen.getAllByText("Prochains renouvellements").length).toBeGreaterThan(0));
   });
@@ -1196,7 +1319,7 @@ describe("App", () => {
     expect(screen.getAllByText("11,00 €").length).toBeGreaterThan(0);
     expect(screen.getAllByText("12,00 €").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Streaming").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Software").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Logiciels").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Figma").length).toBeGreaterThan(0);
     expect(screen.queryByText("Archived Cloud")).not.toBeInTheDocument();
@@ -1294,7 +1417,8 @@ describe("App", () => {
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Déconnexion depuis la barre latérale" }));
-
+    const logoutDialog = screen.getByRole("dialog", { name: "Confirmer la déconnexion" });
+    fireEvent.click(within(logoutDialog).getByRole("button", { name: "Se déconnecter" }));
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
   });
 
@@ -1308,11 +1432,12 @@ describe("App", () => {
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Déconnexion depuis la barre latérale" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Confirmer la déconnexion" })).getByRole("button", { name: "Se déconnecter" }));
 
     await waitFor(() => expect(screen.getByText("Logout failed")).toBeInTheDocument());
   });
 
-  it("switches connected profile labels from French to English", async () => {
+  it("switches connected profile labels from French to English and Spanish", async () => {
     useAuth.mockReturnValue({
       user,
       loading: false,
@@ -1322,11 +1447,16 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Profil" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText("Langue"), { target: { value: "en" } });
 
-    expect(screen.getByRole("heading", { name: "Profile" })).toBeInTheDocument();
     expect(screen.getByText("Interface language")).toBeInTheDocument();
+    expect(screen.getByText("Interface language")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Language"), { target: { value: "es" } });
+
+    expect(screen.getByText("Idioma de la interfaz")).toBeInTheDocument();
+    expect(screen.getByText("Idioma de la interfaz")).toBeInTheDocument();
   });
 
   it("shows clear admin empty states", async () => {
@@ -1404,16 +1534,16 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getAllByRole("button", { name: "Admin" })[0]);
 
-    await waitFor(() => expect(screen.getByText("Gestion utilisateurs")).toBeInTheDocument());
-    expect(screen.getByText("Jamie")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Jamie")).toBeInTheDocument());
+    expect(screen.getByText("Gestion utilisateurs")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Admin Abonnements" }));
     await waitFor(() => expect(screen.getByText("Tous les abonnements")).toBeInTheDocument());
     expect(screen.getByText("Netflix Business")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Admin Utilisateurs" }));
-    await waitFor(() => expect(screen.getByText("Gestion utilisateurs")).toBeInTheDocument());
-    expect(screen.getByText("Jamie")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Jamie")).toBeInTheDocument());
+    expect(screen.getByText("Gestion utilisateurs")).toBeInTheDocument();
   });
 
   it("shows global admin subscriptions with owner, status and monthly amount", async () => {

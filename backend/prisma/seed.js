@@ -6,9 +6,19 @@ const prisma = new PrismaClient();
 
 const categories = [
   { name: "Streaming", color: "#dc2626" },
+  { name: "Sports", color: "#ea580c" },
   { name: "Music", color: "#16a34a" },
   { name: "Software", color: "#2563eb" },
   { name: "Cloud", color: "#7c3aed" },
+  { name: "AI", color: "#9333ea" },
+  { name: "Telecom", color: "#0891b2" },
+  { name: "Insurance", color: "#0f766e" },
+  { name: "Fitness", color: "#8b5cf6" },
+  { name: "Gaming", color: "#db2777" },
+  { name: "Productivity", color: "#f59e0b" },
+  { name: "Finance", color: "#059669" },
+  { name: "Press", color: "#64748b" },
+  { name: "Professional", color: "#475569" },
   { name: "Other", color: "#475569" }
 ];
 

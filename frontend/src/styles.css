@@ -136,6 +136,11 @@ textarea:focus-visible {
   will-change: opacity, transform;
 }
 
+.onboarding-card-enter {
+  animation: onboarding-card-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
 button,
 [role="button"],
 .input,
@@ -197,6 +202,18 @@ textarea {
   from {
     opacity: 0;
     transform: translate3d(0, -6px, 0) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes onboarding-card-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(0.98);
   }
 
   to {

@@ -49,7 +49,20 @@ describe("subscription logos", () => {
     expect(getServiceSuggestions("Basic Fit")[0]).toEqual(expect.objectContaining({ name: "Basic-Fit", domain: "basic-fit.com" }));
     expect(getServiceSuggestions("Credit Agricole")[0]).toEqual(expect.objectContaining({ name: "Credit Agricole", domain: "credit-agricole.fr" }));
     expect(getServiceSuggestions("Crédit Agricole")[0]).toEqual(expect.objectContaining({ name: "Credit Agricole", domain: "credit-agricole.fr" }));
+    expect(getServiceSuggestions("rmc sport")[0]).toEqual(expect.objectContaining({ name: "RMC Sport", domain: "rmcsport.tv" }));
+    expect(getServiceSuggestions("gmprono")[0]).toEqual(expect.objectContaining({ name: "GMProno", domain: "gmprono.com", url: "/gmprono-favicon.png" }));
+    expect(getServiceSuggestions("youtube music")[0]).toEqual(expect.objectContaining({ name: "YouTube Music", domain: "music.youtube.com" }));
+    expect(getServiceSuggestions("assurance auto").map((service) => service.name)).toContain("Direct Assurance");
     expect(getServiceSuggestions("unknown-service")).toEqual([]);
+  });
+
+  it("ranks exact, compact and acronym matches before loose matches", () => {
+    expect(getServiceSuggestions("disney")[0]).toEqual(expect.objectContaining({ name: "Disney+" }));
+    expect(getServiceSuggestions("applemusic")[0]).toEqual(expect.objectContaining({ name: "Apple Music" }));
+    expect(getServiceSuggestions("ms")[0]).toEqual(expect.objectContaining({ name: "Microsoft 365" }));
+    expect(getServiceSuggestions("yt")[0]).toEqual(expect.objectContaining({ name: "YouTube Premium" }));
+    expect(getServiceSuggestions("cursor")[0]).toEqual(expect.objectContaining({ name: "Cursor" }));
+    expect(getServiceSuggestions("free")[0]).toEqual(expect.objectContaining({ name: "Free" }));
   });
 
   it("provides category and average price hints for known services", () => {
@@ -57,6 +70,9 @@ describe("subscription logos", () => {
     expect(getServicePlanSuggestion("Spotify")).toEqual(expect.objectContaining({ category: "Music", priceHints: [11.12], defaultPrice: 11.12 }));
     expect(getServicePlanSuggestion("Disney+")).toEqual(expect.objectContaining({ category: "Streaming", priceHints: [5.99, 9.99], defaultPrice: 5.99 }));
     expect(getServicePlanSuggestion("Canva Pro")).toEqual(expect.objectContaining({ category: "Software", priceHints: [11.99], defaultPrice: 11.99 }));
+    expect(getServicePlanSuggestion("RMC Sport")).toEqual(expect.objectContaining({ category: "Sports", priceHints: [19], defaultPrice: 19 }));
+    expect(getServicePlanSuggestion("GMProno")).toEqual(expect.objectContaining({ category: "Sports", priceHints: [14.99, 34.99], defaultPrice: 14.99 }));
+    expect(getServicePlanSuggestion("YouTube Music")).toEqual(expect.objectContaining({ category: "Music", priceHints: [10.99], defaultPrice: 10.99 }));
     expect(getServicePlanSuggestion("Unknown")).toBeNull();
   });
 

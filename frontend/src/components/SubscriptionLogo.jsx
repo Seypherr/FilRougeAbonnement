@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSubscriptionLogo } from "../utils/subscriptionLogos.js";
 
-export function SubscriptionLogo({ name, className = "size-12 rounded-full", muted = false }) {
-  const logo = useMemo(() => getSubscriptionLogo(name), [name]);
+export function SubscriptionLogo({ name, className = "size-12 rounded-full", muted = false, logoOverride = null }) {
+  const localLogo = useMemo(() => getSubscriptionLogo(name), [name]);
+  const logo = logoOverride ?? localLogo;
   const [source, setSource] = useState("logo");
   const showImage = logo?.hasLogo && source !== "fallback";
   const initial = logo?.initials ?? "?";
@@ -10,7 +11,7 @@ export function SubscriptionLogo({ name, className = "size-12 rounded-full", mut
 
   useEffect(() => {
     setSource("logo");
-  }, [logo?.domain]);
+  }, [logo?.domain, logo?.url]);
 
   const handleImageError = () => {
     setSource((current) => (current === "logo" ? "favicon" : "fallback"));
