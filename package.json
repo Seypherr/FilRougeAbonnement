@@ -23,7 +23,7 @@
     "render:build:backend": "npm ci && npm run db:generate",
     "render:predeploy:backend": "npm run db:deploy",
     "render:seed": "npm run db:seed",
-    "render:start:backend": "npm run db:deploy && npm start --workspace backend",
+    "render:start:backend": "npm run db:deploy && npm run db:seed && npm start --workspace backend",
     "render:build:frontend": "npm ci && npm run build --workspace frontend"
   },
   "devDependencies": {

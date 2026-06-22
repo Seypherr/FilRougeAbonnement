@@ -5,7 +5,6 @@ services:
     region: frankfurt
     plan: free
     buildCommand: npm run render:build:backend
-    initialDeployHook: npm run render:seed
     startCommand: npm run render:start:backend
     healthCheckPath: /api/health
     autoDeployTrigger: commit
