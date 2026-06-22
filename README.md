@@ -207,7 +207,12 @@ Limite connue: la protection CSRF complète n'est pas encore implémentée. La d
 
 ## Documentation
 
+- Spécifications fonctionnelles: [docs/specifications.md](docs/specifications.md)
+- Architecture et choix techniques: [docs/architecture.md](docs/architecture.md)
+- UML et MERISE: [docs/conception.md](docs/conception.md)
+- Base de données et migrations: [docs/database.md](docs/database.md)
 - Déploiement: [docs/deployment.md](docs/deployment.md)
+- Plan de présentation orale: [docs/presentation.md](docs/presentation.md)
 
 ## Limites connues
 
