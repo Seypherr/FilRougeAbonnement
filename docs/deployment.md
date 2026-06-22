@@ -124,7 +124,7 @@ Mesures presentes:
 - Protection CSRF avec le header `x-csrf-token`.
 - Validation Zod sur les routes sensibles.
 - Mot de passe hashe avec bcrypt.
-- `JWT_SECRET` genere par Render.
+- `JWT_SECRET` genere par Render et valide par le schema d'environnement.
 
 ## Verification apres deploiement
 

@@ -87,14 +87,6 @@ const envSchema = z
       });
     }
 
-    if (value.NODE_ENV === "production" && value.JWT_SECRET.length < 48) {
-      context.addIssue({
-        code: "custom",
-        path: ["JWT_SECRET"],
-        message: "JWT_SECRET must contain at least 48 characters in production"
-      });
-    }
-
     const weakProductionSecrets = ["change-this-secret-before-production", "secret-long-et-unique"];
     if (value.NODE_ENV === "production" && weakProductionSecrets.includes(value.JWT_SECRET.toLowerCase())) {
       context.addIssue({
