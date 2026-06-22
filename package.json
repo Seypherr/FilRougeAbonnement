@@ -19,7 +19,6 @@
     "db:deploy": "npm run prisma:migrate:deploy --workspace backend",
     "db:generate": "npm run prisma:generate --workspace backend",
     "db:seed": "npm run prisma:seed --workspace backend",
-    "db:demo": "npm run prisma:demo --workspace backend",
     "render:build:backend": "npm ci && npm run db:generate",
     "render:predeploy:backend": "npm run db:deploy",
     "render:seed": "npm run db:seed",

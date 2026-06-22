@@ -68,7 +68,6 @@ npm run db:up
 npm run db:migrate
 npm run db:generate
 npm run db:seed
-npm run db:demo
 npm run dev
 ```
 
@@ -114,23 +113,6 @@ Valeurs par défaut en développement:
 - Email: `admin@subscription.local`
 - Mot de passe: `Admin123!`
 
-## Données de démonstration
-
-Le script suivant ajoute des utilisateurs et abonnements fictifs:
-
-```bash
-npm run db:demo
-```
-
-Comptes utiles:
-
-- `alex.student@demo.local`
-- `jamie.doe@demo.local`
-- `louis.delarue@demo.local`
-- `ethan.porcarro@demo.local`
-
-Mot de passe commun: `Demo123!`
-
 ## Scripts npm
 
 | Commande | Rôle |
@@ -145,7 +127,6 @@ Mot de passe commun: `Demo123!`
 | `npm run db:migrate` | Lance les migrations Prisma |
 | `npm run db:generate` | Génère le client Prisma |
 | `npm run db:seed` | Crée les catégories et l'admin |
-| `npm run db:demo` | Ajoute des données de démonstration |
 
 ## Routes API principales
 
@@ -226,12 +207,7 @@ Limite connue: la protection CSRF complète n'est pas encore implémentée. La d
 
 ## Documentation
 
-- Conception: [docs/conception.md](docs/conception.md)
 - Déploiement: [docs/deployment.md](docs/deployment.md)
-- Scénario de démonstration: [docs/demo-script.md](docs/demo-script.md)
-- Roadmap: [docs/roadmap.md](docs/roadmap.md)
-- Prompts design: [docs/design-prompts.md](docs/design-prompts.md)
-- Intégration des designs: [docs/design-integration.md](docs/design-integration.md)
 
 ## Limites connues
 
