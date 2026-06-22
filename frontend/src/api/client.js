@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
+const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:4000/api" : "/api");
 const CSRF_HEADER = "x-csrf-token";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const csrfExemptPaths = new Set([

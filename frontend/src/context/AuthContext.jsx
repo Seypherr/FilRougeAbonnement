@@ -25,12 +25,13 @@ export function AuthProvider({ children }) {
       register: async (payload) => {
         const data = await apiRequest("/auth/register", { method: "POST", body: payload });
         setUser(data.user);
+        return data;
       },
       forgotPassword: async (payload) => {
-        await apiRequest("/auth/forgot-password", { method: "POST", body: payload });
+        return apiRequest("/auth/forgot-password", { method: "POST", body: payload });
       },
       resetPassword: async (payload) => {
-        await apiRequest("/auth/reset-password", { method: "POST", body: payload });
+        return apiRequest("/auth/reset-password", { method: "POST", body: payload });
       },
       verifyEmail: async (payload) => {
         const data = await apiRequest("/auth/verify-email", { method: "POST", body: payload });
@@ -38,7 +39,7 @@ export function AuthProvider({ children }) {
         return data.user;
       },
       resendVerification: async () => {
-        await apiRequest("/auth/resend-verification", { method: "POST" });
+        return apiRequest("/auth/resend-verification", { method: "POST" });
       },
       logout: async () => {
         await apiRequest("/auth/logout", { method: "POST" });

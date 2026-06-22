@@ -3,14 +3,17 @@ import { useState } from "react";
 export function EmailVerificationRequiredPage({ t, user, resendVerification, logout }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [verificationUrl, setVerificationUrl] = useState("");
   const [loading, setLoading] = useState(false);
 
   const resend = async () => {
     setMessage("");
     setError("");
+    setVerificationUrl("");
     try {
       setLoading(true);
-      await resendVerification();
+      const data = await resendVerification();
+      setVerificationUrl(data?.verificationUrl ?? "");
       setMessage(t.verificationEmailSent);
     } catch (err) {
       setError(err.message || t.apiErrorMessage);
@@ -30,6 +33,18 @@ export function EmailVerificationRequiredPage({ t, user, resendVerification, log
           {t.verifyYourEmailHelp.replace("{email}", user.email)}
         </p>
         {message && <p className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</p>}
+        {verificationUrl && (
+          <div className="mt-4 grid gap-2 rounded-2xl border border-[#7047EB]/15 bg-[#F4F1FF] p-3">
+            <p className="text-sm font-bold text-[#7047EB]">{t.developmentVerificationLink}</p>
+            <a
+              href={verificationUrl}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF]"
+            >
+              {t.openVerificationLink}
+              <i className="ph-bold ph-arrow-square-out text-base" />
+            </a>
+          </div>
+        )}
         {error && <p className="mt-4 rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}
         <div className="mt-6 grid gap-3">
           <button

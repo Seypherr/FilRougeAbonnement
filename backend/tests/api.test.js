@@ -173,6 +173,28 @@ describe("auth API", () => {
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
+  it("returns a development reset link for an active account", async () => {
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.user.update.mockResolvedValueOnce(user);
+
+    const response = await request(app)
+      .post("/api/auth/forgot-password")
+      .send({ email: user.email })
+      .expect(200);
+
+    expect(response.body.message).toContain("If an account exists");
+    expect(response.body.resetUrl).toMatch(/^http:\/\/localhost:5173\/reset-password\?token=/);
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: user.id },
+        data: expect.objectContaining({
+          passwordResetTokenHash: expect.any(String),
+          passwordResetTokenExpiresAt: expect.any(Date)
+        })
+      })
+    );
+  });
+
   it("resets a password with a valid reset token", async () => {
     mockPrisma.user.findFirst.mockResolvedValueOnce(user);
     mockPrisma.user.update.mockResolvedValueOnce(user);

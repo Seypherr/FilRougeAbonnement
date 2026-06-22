@@ -1,121 +1,116 @@
-# Deploiement
+# Deploiement Render
 
 ## Objectif
 
-Cette documentation decrit une strategie de deploiement simple et realiste pour presenter le projet et preparer une mise en production publique.
+Cette documentation decrit la configuration de production Render preparee pour le projet.
 
-Strategie recommandee:
+Le projet est un monorepo npm:
 
-- Frontend: Vercel
-- Backend: Render ou Railway
-- Base de donnees: PostgreSQL heberge sur Railway, Supabase ou Neon
+- Frontend: React + Vite, heberge en Static Site Render.
+- Backend: Express, heberge en Web Service Node Render.
+- Base de donnees: PostgreSQL Render.
+- ORM: Prisma.
+- Seed: `backend/prisma/seed.js`, idempotent avec `upsert`.
 
 ## Architecture de production
 
 ```mermaid
 flowchart LR
-  User["Utilisateur"] --> Vercel["Frontend Vercel"]
-  Vercel --> Api["Backend Render/Railway"]
-  Api --> Db["PostgreSQL heberge"]
+  User["Utilisateur"] --> Frontend["Frontend Render Static Site"]
+  Frontend --> Api["Backend Render Web Service"]
+  Api --> Db["Render PostgreSQL"]
 ```
 
-## Frontend sur Vercel
+## Blueprint Render
 
-Configuration:
+La configuration principale est dans `render.yaml` a la racine du depot.
 
-- Root directory: `frontend`
-- Build command: `npm run build`
-- Output directory: `dist`
+Elle cree:
 
-Variable d'environnement:
+- `subscription-manager-api`: service web Node.
+- `subscription-manager-frontend`: site statique Vite.
+- `subscription-manager-db`: base PostgreSQL.
 
-```env
-VITE_API_URL=https://url-du-backend.onrender.com/api
-```
+Configuration backend:
 
-Apres deploiement, recuperer l'URL Vercel finale. Exemple:
+- Build command: `npm run render:build:backend`
+- Pre-deploy command: `npm run render:predeploy:backend`
+- Initial deploy hook: `npm run render:seed`
+- Start command: `npm run render:start:backend`
+- Health check: `/api/health`
 
-```txt
-https://subscription-manager.vercel.app
-```
+Configuration frontend:
 
-Cette URL devra etre ajoutee cote backend dans `CLIENT_ORIGIN` et `CLIENT_ORIGINS`.
+- Build command: `npm run render:build:frontend`
+- Publish directory: `./frontend/dist`
+- SPA rewrite: `/*` vers `/index.html`
 
-## Backend sur Render ou Railway
+## Variables Render
 
-Configuration recommandee:
-
-- Root directory: `backend`
-- Build command: `npm install && npm run prisma:generate`
-- Start command: `npm start`
-- Runtime: Node.js
-
-Variables d'environnement backend:
+Backend:
 
 ```env
 NODE_ENV=production
-PORT=4000
-CLIENT_ORIGIN=https://url-du-frontend.vercel.app
-CLIENT_ORIGINS=https://url-du-frontend.vercel.app
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB?schema=public
-JWT_SECRET=generer-une-valeur-aleatoire-privee-d-au-moins-48-caracteres
+CLIENT_ORIGIN=https://subscription-manager-frontend.onrender.com
+CLIENT_ORIGINS=https://subscription-manager-frontend.onrender.com
+DATABASE_URL=<genere depuis subscription-manager-db>
+JWT_SECRET=<genere automatiquement par Render>
 JWT_EXPIRES_IN=7d
 COOKIE_NAME=subscription_manager_token
 COOKIE_SECURE=true
 COOKIE_SAME_SITE=none
 CSRF_COOKIE_NAME=subscription_manager_csrf
 CSRF_HEADER_NAME=x-csrf-token
+RESEND_API_KEY=<a renseigner dans Render>
+EMAIL_FROM=Subscription Manager <onboarding@resend.dev>
 AUTH_RATE_LIMIT_WINDOW_MS=900000
 AUTH_RATE_LIMIT_MAX=10
-ADMIN_EMAIL=admin@subscription.local
-ADMIN_PASSWORD=mot-de-passe-fort
+ADMIN_EMAIL=<a renseigner dans Render>
+ADMIN_PASSWORD=<a renseigner dans Render>
 ADMIN_NAME=Admin Subscription
 ```
 
-Important:
+Frontend:
 
-- `CLIENT_ORIGIN` doit etre exactement l'origine du frontend, sans slash final.
-- En production, les origines `localhost` sont refusees par la configuration backend.
-- `JWT_SECRET` doit etre prive, long, aleatoire et contenir au moins 48 caracteres.
-- `COOKIE_SECURE=true` est obligatoire en production.
-- `COOKIE_SAME_SITE=none` est attendu si frontend et backend sont sur deux domaines differents.
-- Le frontend ne stocke pas le JWT: l'authentification reste basee sur cookie HTTP-only.
-
-## PostgreSQL heberge
-
-Options possibles:
-
-- Railway PostgreSQL
-- Supabase PostgreSQL
-- Neon PostgreSQL
-
-Etapes:
-
-1. Creer une base PostgreSQL.
-2. Copier l'URL de connexion dans `DATABASE_URL`.
-3. Verifier que l'URL utilise bien le provider PostgreSQL.
-4. Lancer les migrations Prisma sur l'environnement backend.
-5. Lancer le seed admin si necessaire.
-
-Commandes utiles selon l'hebergeur:
-
-```bash
-npm run prisma:migrate --workspace backend
-npm run prisma:seed --workspace backend
+```env
+VITE_API_URL=https://subscription-manager-api.onrender.com/api
 ```
 
-Sur certaines plateformes, ces commandes doivent etre lancees dans une console fournie par l'hebergeur ou dans un job de deploiement.
+Si Render attribue un sous-domaine different parce qu'un nom est deja pris, mettre a jour:
 
-## Ordre de deploiement conseille
+- `VITE_API_URL` cote frontend avec l'URL API finale.
+- `CLIENT_ORIGIN` et `CLIENT_ORIGINS` cote backend avec l'URL frontend finale.
 
-1. Creer la base PostgreSQL hebergee.
-2. Deployer le backend avec `DATABASE_URL`, `JWT_SECRET` et les variables cookies.
-3. Executer les migrations Prisma.
-4. Executer le seed admin.
-5. Deployer le frontend avec `VITE_API_URL`.
-6. Mettre l'URL frontend reelle dans `CLIENT_ORIGIN` et `CLIENT_ORIGINS`.
-7. Redeployer le backend si necessaire.
-8. Tester login, register, logout, dashboard, abonnements, profil et admin.
+## Base de donnees, migrations et seed
+
+Prisma utilise `DATABASE_URL`.
+
+Commandes utiles:
+
+```bash
+npm run db:generate
+npm run db:deploy
+npm run db:seed
+```
+
+Sur Render:
+
+- `preDeployCommand` lance `prisma migrate deploy` avant le demarrage du backend.
+- `initialDeployHook` lance le seed seulement au premier deploiement reussi.
+- Le seed est idempotent: les categories et l'admin sont crees/mis a jour avec `upsert`.
+
+## Deploiement depuis Render
+
+1. Pousser le projet sur GitHub avec `render.yaml`.
+2. Dans Render, choisir `New` puis `Blueprint`.
+3. Connecter le repository GitHub du projet.
+4. Confirmer le blueprint.
+5. Renseigner les variables demandees:
+   - `RESEND_API_KEY`
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+6. Laisser Render creer la base, le backend et le frontend.
+7. Une fois les deux URLs publiques creees, verifier qu'elles correspondent aux valeurs du blueprint.
 
 ## Securite production
 
@@ -125,60 +120,30 @@ Mesures presentes:
 - Rate-limit sur login/register.
 - Cookie HTTP-only pour le JWT.
 - Cookie `Secure` obligatoire en production.
-- `SameSite=None` attendu en production cross-site.
-- CORS par allowlist stricte.
-- Protection CSRF par token signe envoye dans le header `x-csrf-token`.
+- `SameSite=None` pour l'authentification cross-site entre frontend et backend Render.
+- CORS par allowlist stricte via `CLIENT_ORIGIN` et `CLIENT_ORIGINS`.
+- Protection CSRF avec le header `x-csrf-token`.
 - Validation Zod sur les routes sensibles.
 - Mot de passe hashe avec bcrypt.
-- Secret JWT renforce en production.
+- `JWT_SECRET` genere par Render.
 
-Fonctionnement CSRF:
+## Verification apres deploiement
 
-1. Le frontend recupere un token via `GET /api/auth/csrf`.
-2. Pour les routes `POST`, `PUT`, `PATCH` et `DELETE`, le frontend envoie le header `x-csrf-token`.
-3. Le backend verifie que le token est signe avec le secret applicatif.
-4. Les routes `login` et `register` restent accessibles sans token CSRF.
+Verifier:
 
-Cette strategie fonctionne avec les cookies HTTP-only et evite de stocker le JWT cote frontend.
-
-## Avatar en production
-
-Le champ `avatarUrl` accepte uniquement une URL d'image externe valide.
-
-Limite volontaire:
-
-- Les images `data:image` ne sont plus acceptees par le backend.
-- Aucun fichier image n'est stocke dans PostgreSQL.
-- L'upload reel devra etre branche plus tard sur un stockage externe: Cloudinary, Supabase Storage, S3 ou service equivalent.
-
-## Tests apres deploiement
-
-A verifier manuellement:
-
+- `https://subscription-manager-api.onrender.com/api/health`
+- Chargement du frontend public.
 - Inscription utilisateur.
+- Verification email via Resend.
 - Connexion utilisateur.
-- Creation d'un abonnement.
-- Modification d'un abonnement.
-- Archivage d'un abonnement.
-- Modification du profil avec URL avatar HTTPS.
-- Dashboard et Analytics coherents.
-- Connexion admin.
-- Liste utilisateurs admin.
-- Liste abonnements admin.
-- Deconnexion.
+- Creation, modification et archivage d'un abonnement.
+- Dashboard, analytics, profil et admin.
+- Cookies presents en HTTPS.
+- CORS sans erreur dans la console navigateur.
 
-A verifier techniquement:
+## Limites a surveiller
 
-- Le frontend appelle bien l'URL backend de production.
-- Les cookies sont presents en HTTPS.
-- Les requetes incluent `credentials: "include"`.
-- Les mutations envoient le header `x-csrf-token`.
-- CORS n'accepte pas d'origine inconnue.
-- Les logs backend ne montrent pas d'erreur Prisma ou CORS.
-
-## Limites connues
-
-- Pas encore d'upload fichier avatar en production.
-- Pas de workflow CI/CD complet.
-- Pas de monitoring ou alerting production.
-- Pas de reset password par email.
+- Le plan gratuit Render peut mettre les services en veille.
+- `onboarding@resend.dev` est surtout adapte aux tests Resend. Pour envoyer a de vrais utilisateurs, configurer un domaine verifie Resend et remplacer `EMAIL_FROM`.
+- Si Render change les sous-domaines publics, ajuster les trois variables d'URL indiquees plus haut.
+- Le stockage d'avatar reste externe uniquement via URL HTTPS.

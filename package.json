@@ -16,9 +16,15 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:migrate": "npm run prisma:migrate --workspace backend",
+    "db:deploy": "npm run prisma:migrate:deploy --workspace backend",
     "db:generate": "npm run prisma:generate --workspace backend",
     "db:seed": "npm run prisma:seed --workspace backend",
-    "db:demo": "npm run prisma:demo --workspace backend"
+    "db:demo": "npm run prisma:demo --workspace backend",
+    "render:build:backend": "npm ci && npm run db:generate",
+    "render:predeploy:backend": "npm run db:deploy",
+    "render:seed": "npm run db:seed",
+    "render:start:backend": "npm start --workspace backend",
+    "render:build:frontend": "npm ci && npm run build --workspace frontend"
   },
   "devDependencies": {
     "concurrently": "9.2.0",

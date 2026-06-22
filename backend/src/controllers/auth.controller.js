@@ -38,12 +38,15 @@ export const register = asyncHandler(async (req, res) => {
     select: publicUserSelect
   });
 
-  await sendVerificationEmail(user, verificationToken);
+  const verificationUrl = await sendVerificationEmail(user, verificationToken);
 
   const token = signAuthToken(user);
   setAuthCookie(res, token);
 
-  res.status(201).json({ user });
+  res.status(201).json({
+    user,
+    ...(env.NODE_ENV !== "production" ? { verificationUrl } : {})
+  });
 });
 
 export const login = asyncHandler(async (req, res) => {
@@ -80,8 +83,11 @@ export const resendVerificationEmail = asyncHandler(async (req, res) => {
     }
   });
 
-  await sendVerificationEmail(req.user, verificationToken);
-  res.json({ message: "Verification email sent" });
+  const verificationUrl = await sendVerificationEmail(req.user, verificationToken);
+  res.json({
+    message: "Verification email sent",
+    ...(env.NODE_ENV !== "production" ? { verificationUrl } : {})
+  });
 });
 
 export const verifyEmail = asyncHandler(async (req, res) => {
@@ -114,6 +120,7 @@ export const verifyEmail = asyncHandler(async (req, res) => {
 
 export const forgotPassword = asyncHandler(async (req, res) => {
   const user = await prisma.user.findUnique({ where: { email: req.body.email } });
+  let resetUrl = null;
 
   if (user?.isActive) {
     const resetToken = createSecureToken();
@@ -124,10 +131,13 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         passwordResetTokenExpiresAt: getTokenExpiry(30)
       }
     });
-    await sendPasswordResetEmail(user, resetToken);
+    resetUrl = await sendPasswordResetEmail(user, resetToken);
   }
 
-  res.json({ message: "If an account exists, a password reset email has been sent" });
+  res.json({
+    message: "If an account exists, a password reset email has been sent",
+    ...(env.NODE_ENV !== "production" && resetUrl ? { resetUrl } : {})
+  });
 });
 
 export const resetPassword = asyncHandler(async (req, res) => {

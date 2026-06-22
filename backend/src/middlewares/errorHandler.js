@@ -30,6 +30,14 @@ export const errorHandler = (error, _req, res, _next) => {
     }
   }
 
+  if (
+    Prisma.PrismaClientInitializationError &&
+    error instanceof Prisma.PrismaClientInitializationError
+  ) {
+    statusCode = 503;
+    message = "Service temporairement indisponible. Vérifiez que la base de données est démarrée.";
+  }
+
   logger.error(message, { statusCode, details });
 
   res.status(statusCode).json({

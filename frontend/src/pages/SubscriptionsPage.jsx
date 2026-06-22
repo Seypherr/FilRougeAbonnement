@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { StatePanel } from "../components/StatePanel.jsx";
-import { SubscriptionModal } from "../components/SubscriptionModal.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { translateCategoryName } from "../i18n/dictionaries.js";
 import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
+
+const SubscriptionModal = lazy(() => import("../components/SubscriptionModal.jsx").then((module) => ({ default: module.SubscriptionModal })));
+const SUBSCRIPTION_BATCH_SIZE = 12;
 
 const filterOptions = [
   ["", "all"],
@@ -95,6 +97,66 @@ function SubscriptionCard({ t, sub, onEdit, onArchive, onDeletePermanent }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function LazyListLoader({ t }) {
+  return (
+    <div className="col-span-full grid min-h-24 place-items-center rounded-[20px] border border-dashed border-slate-200 bg-white/70 text-sm font-black text-slate-400">
+      <span className="inline-flex items-center gap-2">
+        <i className="ph ph-spinner-gap animate-spin text-base text-[#7047EB]" />
+        {t.loading}
+      </span>
+    </div>
+  );
+}
+
+function LazySubscriptionGrid({ t, subscriptions, onEdit, onArchive, onDeletePermanent }) {
+  const [visibleCount, setVisibleCount] = useState(SUBSCRIPTION_BATCH_SIZE);
+  const sentinelRef = useRef(null);
+  const visibleSubscriptions = useMemo(() => subscriptions.slice(0, visibleCount), [subscriptions, visibleCount]);
+  const hasMore = visibleCount < subscriptions.length;
+
+  useEffect(() => {
+    setVisibleCount(SUBSCRIPTION_BATCH_SIZE);
+  }, [subscriptions]);
+
+  useEffect(() => {
+    if (!hasMore) return undefined;
+
+    if (!("IntersectionObserver" in window)) {
+      setVisibleCount(subscriptions.length);
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((current) => Math.min(current + SUBSCRIPTION_BATCH_SIZE, subscriptions.length));
+        }
+      },
+      { rootMargin: "360px 0px", threshold: 0.01 }
+    );
+
+    const sentinel = sentinelRef.current;
+    if (sentinel) {
+      observer.observe(sentinel);
+    }
+
+    return () => observer.disconnect();
+  }, [hasMore, subscriptions.length]);
+
+  return (
+    <div className="grid gap-3.5 lg:grid-cols-2">
+      {visibleSubscriptions.map((subscription) => (
+        <SubscriptionCard key={subscription.id} t={t} sub={subscription} onEdit={onEdit} onArchive={onArchive} onDeletePermanent={onDeletePermanent} />
+      ))}
+      {hasMore && (
+        <div ref={sentinelRef} className="col-span-full">
+          <LazyListLoader t={t} />
+        </div>
+      )}
     </div>
   );
 }
@@ -212,24 +274,28 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
           ) : subscriptions.length === 0 ? (
             <StatePanel title={t.emptySubscriptionsTitle} message={t.emptySubscriptionsMessage} tone="empty" icon="ph-receipt" />
           ) : (
-            <div className="grid gap-3.5 lg:grid-cols-2">
-              {subscriptions.map((subscription) => (
-                <SubscriptionCard key={subscription.id} t={t} sub={subscription} onEdit={(sub) => setModalState({ open: true, subscription: sub })} onArchive={archive} onDeletePermanent={deletePermanent} />
-              ))}
-            </div>
+            <LazySubscriptionGrid
+              t={t}
+              subscriptions={subscriptions}
+              onEdit={(sub) => setModalState({ open: true, subscription: sub })}
+              onArchive={archive}
+              onDeletePermanent={deletePermanent}
+            />
           )}
         </section>
       </main>
 
       {modalState.open && (
-        <SubscriptionModal
-          t={t}
-          language={language}
-          subscription={modalState.subscription}
-          categories={categories}
-          onClose={() => setModalState({ open: false, subscription: null })}
-          onSubmit={saveSubscription}
-        />
+        <Suspense fallback={<LazyListLoader t={t} />}>
+          <SubscriptionModal
+            t={t}
+            language={language}
+            subscription={modalState.subscription}
+            categories={categories}
+            onClose={() => setModalState({ open: false, subscription: null })}
+            onSubmit={saveSubscription}
+          />
+        </Suspense>
       )}
     </div>
   );

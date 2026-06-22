@@ -16,6 +16,17 @@ const booleanFromEnv = (defaultValue) =>
       return ["1", "true", "yes", "on"].includes(value.toLowerCase());
     });
 
+const optionalNonEmptyString = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim() || undefined);
+
+const optionalEmailFromEnv = z
+  .string()
+  .optional()
+  .transform((value) => value?.trim() || undefined)
+  .pipe(z.string().email().optional());
+
 const originsFromEnv = z
   .string()
   .optional()
@@ -45,6 +56,9 @@ const envSchema = z
     CSRF_HEADER_NAME: z.string().default("x-csrf-token"),
     COOKIE_SECURE: booleanFromEnv(isProduction),
     COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default(isProduction ? "none" : "lax"),
+    RESEND_API_KEY: optionalNonEmptyString,
+    EMAIL_FROM: z.string().default("Subscription Manager <onboarding@resend.dev>"),
+    EMAIL_REPLY_TO: optionalEmailFromEnv,
     AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(isProduction ? 10 : 100)
   })

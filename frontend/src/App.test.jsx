@@ -227,7 +227,9 @@ describe("App", () => {
   });
 
   it("submits a forgot password request from the auth page", async () => {
-    const forgotPassword = vi.fn().mockResolvedValue({});
+    const forgotPassword = vi.fn().mockResolvedValue({
+      resetUrl: "http://localhost:5173/reset-password?token=abc123"
+    });
     useAuth.mockReturnValue({
       user: null,
       loading: false,
@@ -243,11 +245,14 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Envoyer le lien" }));
 
     await waitFor(() => expect(forgotPassword).toHaveBeenCalledWith({ email: "reset@test.local" }));
+    expect(screen.getByRole("link", { name: /Ouvrir le lien/ })).toHaveAttribute("href", "http://localhost:5173/reset-password?token=abc123");
     expect(screen.getByText("Si un compte existe, un email de réinitialisation a été envoyé.")).toBeInTheDocument();
   });
 
   it("blocks the connected app until email is verified", async () => {
-    const resendVerification = vi.fn().mockResolvedValue({});
+    const resendVerification = vi.fn().mockResolvedValue({
+      verificationUrl: "http://localhost:5173/verify-email?token=verify123"
+    });
     useAuth.mockReturnValue({
       user: { ...user, emailVerified: false },
       loading: false,
@@ -262,6 +267,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Renvoyer l'email" }));
 
     await waitFor(() => expect(resendVerification).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByRole("link", { name: /Ouvrir le lien de vérification/ })).toHaveAttribute("href", "http://localhost:5173/verify-email?token=verify123"));
   });
 
   it("cycles the login page from French to English and Spanish", () => {
@@ -430,6 +436,7 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("0,00 €").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "Ajouter un abonnement" }));
+    await waitFor(() => expect(screen.getByLabelText("Nom")).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText("Nom"), { target: { value: "Canva" } });
     fireEvent.change(screen.getByLabelText("Prix"), { target: { value: "9,99" } });
     fireEvent.change(screen.getByLabelText("Renouvellement"), { target: { value: "2099-06-03" } });
@@ -479,7 +486,7 @@ describe("App", () => {
     expect(screen.getAllByText("Archived Cloud").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Paused Music").length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole("button", { name: "Ajouter un abonnement" })[0]);
-    expect(screen.getAllByText("Ajouter un abonnement").length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText("Ajouter un abonnement").length).toBeGreaterThan(0));
     expect(screen.getByText("Prix")).toBeInTheDocument();
   });
 
@@ -1048,7 +1055,9 @@ describe("App", () => {
   });
 
   it("requests a password reset from the profile assistance section", async () => {
-    const forgotPassword = vi.fn().mockResolvedValue({});
+    const forgotPassword = vi.fn().mockResolvedValue({
+      resetUrl: "http://localhost:5173/reset-password?token=abc123"
+    });
     useAuth.mockReturnValue({
       user,
       forgotPassword,

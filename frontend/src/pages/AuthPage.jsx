@@ -24,10 +24,11 @@ export function AuthPage({ t, language, setLanguage }) {
     if (path.includes("verify-email")) return "verify";
     return "login";
   });
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [resetUrl, setResetUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const emailInvalid = form.email.length > 0 && !isStrictEmail(form.email);
@@ -66,8 +67,13 @@ export function AuthPage({ t, language, setLanguage }) {
     event.preventDefault();
     setError("");
     setMessage("");
+    setResetUrl("");
     if (isRegisterMode && !acceptedPrivacy) {
       setError(t.privacyRequired);
+      return;
+    }
+    if (mode === "reset" && form.password !== form.confirmPassword) {
+      setError(t.passwordMismatch);
       return;
     }
 
@@ -82,7 +88,8 @@ export function AuthPage({ t, language, setLanguage }) {
           password: form.password
         });
       } else if (mode === "forgot") {
-        await forgotPassword({ email: form.email });
+        const data = await forgotPassword({ email: form.email });
+        setResetUrl(data?.resetUrl ?? "");
         setMessage(t.passwordResetEmailSent);
       } else if (mode === "reset") {
         if (!token) {
@@ -194,7 +201,7 @@ export function AuthPage({ t, language, setLanguage }) {
               <div className="mb-2 ml-1 flex items-center justify-between">
                 <label className="block text-sm font-semibold text-[#1B1D28]">{t.password}</label>
                 {mode === "login" && (
-                  <button type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); }} className="text-xs font-black text-[#7047EB]">
+                  <button type="button" onClick={() => { setMode("forgot"); setError(""); setMessage(""); setResetUrl(""); }} className="text-xs font-black text-[#7047EB]">
                     {t.forgotPassword}
                   </button>
                 )}
@@ -223,6 +230,24 @@ export function AuthPage({ t, language, setLanguage }) {
               </div>
             </div>}
 
+            {mode === "reset" && <div>
+              <label className="mb-2 ml-1 block text-sm font-semibold text-[#1B1D28]">{t.confirmPassword}</label>
+              <div className="relative">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                  <i className="ph-fill ph-shield-check text-lg text-[#8E95A9]" />
+                </div>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={form.confirmPassword}
+                  onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
+                  className="block w-full rounded-full border-2 border-[#EAECEF] bg-[#F8F9FB] py-3.5 pl-11 pr-12 text-sm font-medium text-[#1B1D28] outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#7047EB]/20"
+                  placeholder={t.confirmPasswordPlaceholder}
+                  required
+                  minLength={8}
+                />
+              </div>
+            </div>}
+
             {isRegisterMode && <label className="flex items-start gap-3 rounded-2xl border border-[#EAECEF] bg-[#F8F9FB] p-3 text-sm font-bold text-[#1B1D28]">
               <input
                 type="checkbox"
@@ -238,6 +263,18 @@ export function AuthPage({ t, language, setLanguage }) {
 
             {error && <p className="rounded-2xl bg-[#FFF0F3] p-3 text-sm font-semibold text-[#FF3E5D]">{error}</p>}
             {message && <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{message}</p>}
+            {resetUrl && (
+              <div className="grid gap-2 rounded-2xl border border-[#7047EB]/15 bg-[#F4F1FF] p-3">
+                <p className="text-sm font-bold text-[#7047EB]">{t.developmentResetLink}</p>
+                <a
+                  href={resetUrl}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#5E35D9]"
+                >
+                  {t.openResetLink}
+                  <i className="ph-bold ph-arrow-square-out text-base" />
+                </a>
+              </div>
+            )}
 
             {mode !== "verify" && <button
               type="submit"
@@ -255,6 +292,7 @@ export function AuthPage({ t, language, setLanguage }) {
                   setMode("login");
                   setError("");
                   setMessage("");
+                  setResetUrl("");
                 }}
                 className="rounded-full border border-[#EAECEF] bg-white py-3 text-sm font-black text-[#7047EB] transition hover:bg-[#F4F1FF]"
               >
