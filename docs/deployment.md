@@ -34,9 +34,8 @@ Elle cree:
 Configuration backend:
 
 - Build command: `npm run render:build:backend`
-- Pre-deploy command: `npm run render:predeploy:backend`
-- Initial deploy hook: `npm run render:seed`
 - Start command: `npm run render:start:backend`
+- Initial deploy hook: `npm run render:seed`
 - Health check: `/api/health`
 
 Configuration frontend:
@@ -95,7 +94,7 @@ npm run db:seed
 
 Sur Render:
 
-- `preDeployCommand` lance `prisma migrate deploy` avant le demarrage du backend.
+- `render:start:backend` lance `prisma migrate deploy`, puis demarre le backend.
 - `initialDeployHook` lance le seed seulement au premier deploiement reussi.
 - Le seed est idempotent: les categories et l'admin sont crees/mis a jour avec `upsert`.
 
