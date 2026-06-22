@@ -2,7 +2,7 @@
 
 ## Script global de direction artistique
 
-Créer une interface web moderne, claire et mobile-first pour une application de gestion d'abonnements appelée **Subscription Manager**.
+Créer une interface web moderne, claire et mobile-first pour une application de gestion d'abonnements appelée **Frovely**.
 
 L'application doit donner une impression de sérieux, de simplicité et de contrôle financier. Le design doit rester scolaire/propre et facile à expliquer à l'oral, sans devenir trop complexe. L'utilisateur doit comprendre rapidement combien il dépense, quels abonnements sont actifs, et quelles actions il peut faire.
 
@@ -30,7 +30,7 @@ Contraintes:
 
 ## Prompt page Connexion / Inscription
 
-Créer une page mobile-first de connexion et d'inscription pour une application appelée **Subscription Manager**.
+Créer une page mobile-first de connexion et d'inscription pour une application appelée **Frovely**.
 
 La page doit contenir:
 
@@ -51,7 +51,7 @@ Objectif UX:
 Prompt court:
 
 ```txt
-Design a mobile-first authentication screen for a subscription management app named Subscription Manager. Include a language switcher, login/register tabs, clean form fields, clear error states, and a sober professional dashboard-style visual identity using white, light gray, dark navy, and subtle borders. Keep the page simple, accessible, and ready for a student project demo.
+Design a mobile-first authentication screen for a subscription management app named Frovely. Include a language switcher, login/register tabs, clean form fields, clear error states, and a sober professional dashboard-style visual identity using white, light gray, dark navy, and subtle borders. Keep the page simple, accessible, and ready for a student project demo.
 ```
 
 ## Prompt page Dashboard
@@ -78,7 +78,7 @@ Objectif UX:
 Prompt court:
 
 ```txt
-Design a mobile-first user dashboard for Subscription Manager. Show monthly total, estimated yearly total, active subscriptions, archived subscriptions, upcoming renewals, and a clear add-subscription call to action. Use compact cards, clean spacing, dark primary buttons, subtle borders, and a professional student-project style. The page must work well on mobile and desktop.
+Design a mobile-first user dashboard for Frovely. Show monthly total, estimated yearly total, active subscriptions, archived subscriptions, upcoming renewals, and a clear add-subscription call to action. Use compact cards, clean spacing, dark primary buttons, subtle borders, and a professional student-project style. The page must work well on mobile and desktop.
 ```
 
 ## Prompt page Abonnements
@@ -158,7 +158,7 @@ Objectif UX:
 Prompt court:
 
 ```txt
-Design a mobile-first admin page for Subscription Manager. Include a create-user form, user management cards on mobile, a table-like layout on desktop, role selector, active/inactive toggle, delete action with danger styling, and a section listing all subscriptions. Keep the UI clear, compact, and suitable for a student web/database project demo.
+Design a mobile-first admin page for Frovely. Include a create-user form, user management cards on mobile, a table-like layout on desktop, role selector, active/inactive toggle, delete action with danger styling, and a section listing all subscriptions. Keep the UI clear, compact, and suitable for a student web/database project demo.
 ```
 
 ## Prompt page Documentation / Présentation projet
@@ -187,13 +187,13 @@ Objectif UX:
 Prompt court:
 
 ```txt
-Design a project presentation page for a student web application named Subscription Manager. Show project goals, team, tech stack, MVC architecture, database entities, main features, security choices, tests, and deployment plan. Use a clean documentation-style layout with cards, icons, and concise sections.
+Design a project presentation page for a student web application named Frovely. Show project goals, team, tech stack, MVC architecture, database entities, main features, security choices, tests, and deployment plan. Use a clean documentation-style layout with cards, icons, and concise sections.
 ```
 
 ## Prompt global pour refaire tout le frontend
 
 ```txt
-Redesign the existing React + Tailwind frontend of Subscription Manager without changing backend API contracts. The app manages user subscriptions with secure HTTP-only cookie authentication, roles USER and ADMIN, subscriptions CRUD, statistics, and bilingual French/English UI.
+Redesign the existing React + Tailwind frontend of Frovely without changing backend API contracts. The app manages user subscriptions with secure HTTP-only cookie authentication, roles USER and ADMIN, subscriptions CRUD, statistics, and bilingual French/English UI.
 
 Keep these pages:
 - Login/Register

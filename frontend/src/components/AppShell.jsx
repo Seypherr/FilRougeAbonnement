@@ -32,15 +32,15 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[280px_1fr] lg:p-6">
-      <aside className="hidden min-h-[calc(100vh-48px)] rounded-l-[32px] border-r border-slate-100 bg-white p-8 lg:flex lg:flex-col">
+    <main className="min-h-screen overflow-x-hidden bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[clamp(240px,20vw,280px)_minmax(0,1fr)] lg:p-4 xl:p-6">
+      <aside className="hidden min-h-[calc(100vh-32px)] rounded-l-[32px] border-r border-slate-100 bg-white p-5 xl:min-h-[calc(100vh-48px)] xl:p-8 lg:flex lg:flex-col">
         <div>
-          <div className="mb-10 flex items-center gap-3">
+          <div className="mb-8 flex min-w-0 items-center gap-3 xl:mb-10">
             <div className="grid size-12 place-items-center rounded-2xl bg-[#7B42FF] text-white shadow-[0_8px_24px_-8px_rgba(123,66,255,0.55)]">
               <CreditCard size={24} />
             </div>
             <div>
-              <p className="text-lg font-black">{t.appName}</p>
+              <p className="truncate text-lg font-black">{t.appName}</p>
             </div>
           </div>
 
@@ -99,8 +99,8 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
         </div>
       </aside>
 
-      <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-48px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0">
-        <div className={`mx-auto ${tab === "profile" ? "max-w-none" : "max-w-7xl"} lg:h-[calc(100vh-48px)] lg:overflow-y-auto lg:p-8`}>
+      <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-32px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0 xl:min-h-[calc(100vh-48px)]">
+        <div className={`mx-auto ${tab === "profile" ? "max-w-none" : "max-w-7xl"} lg:h-[calc(100vh-32px)] lg:overflow-y-auto lg:p-5 xl:h-[calc(100vh-48px)] xl:p-8`}>
           <div key={tab} className="page-transition">
             {children}
           </div>

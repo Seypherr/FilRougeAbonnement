@@ -4,7 +4,7 @@ Objectif: présenter clairement le besoin, les fonctionnalités, l'architecture 
 
 ## Introduction courte
 
-Subscription Manager est une application web de gestion d'abonnements. Elle répond à un besoin simple: centraliser ses abonnements, suivre ses dépenses mensuelles et garder une vision claire des services actifs, inactifs ou archivés.
+Frovely est une application web de gestion d'abonnements. Elle répond à un besoin simple: centraliser ses abonnements, suivre ses dépenses mensuelles et garder une vision claire des services actifs, inactifs ou archivés.
 
 Le projet contient:
 

@@ -99,7 +99,7 @@ function getLastButtonByName(name) {
 
 beforeEach(() => {
   window.localStorage.clear();
-  window.localStorage.setItem("subscription-manager:onboarding:v1:user-1", "completed");
+  window.localStorage.setItem("frovely:onboarding:v1:user-1", "completed");
   apiRequest.mockImplementation((path) => {
     if (path.startsWith("/subscriptions")) {
       return Promise.resolve(subscriptionsResponse);
@@ -169,7 +169,7 @@ describe("App", () => {
   });
 
   it("shows and persists the mobile onboarding carousel before the app", () => {
-    window.localStorage.removeItem("subscription-manager:onboarding:v1:user-1");
+    window.localStorage.removeItem("frovely:onboarding:v1:user-1");
     useAuth.mockReturnValue({
       user,
       loading: false,
@@ -190,7 +190,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Voir les échéances à venir" }));
     fireEvent.click(screen.getByRole("button", { name: "Terminer" }));
 
-    expect(window.localStorage.getItem("subscription-manager:onboarding:v1:user-1")).toBe("completed");
+    expect(window.localStorage.getItem("frovely:onboarding:v1:user-1")).toBe("completed");
     expect(screen.getByText("Tableau de bord")).toBeInTheDocument();
   });
 
@@ -300,7 +300,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "FR" }));
     fireEvent.click(screen.getByRole("button", { name: "EN" }));
 
-    expect(window.localStorage.getItem("subscription-manager:language")).toBe("es");
+    expect(window.localStorage.getItem("frovely:language")).toBe("es");
 
     unmount();
     render(<App />);
@@ -1051,7 +1051,7 @@ describe("App", () => {
     fireEvent.click(pushSwitch);
 
     expect(pushSwitch).toHaveAttribute("aria-checked", "true");
-    expect(window.localStorage.getItem("subscription-manager:push-notifications:user-1")).toBe("enabled");
+    expect(window.localStorage.getItem("frovely:push-notifications:user-1")).toBe("enabled");
   });
 
   it("requests a password reset from the profile assistance section", async () => {

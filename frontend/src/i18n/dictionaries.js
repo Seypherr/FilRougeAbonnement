@@ -1,10 +1,10 @@
 export const DEFAULT_LANGUAGE = "fr";
-export const LANGUAGE_STORAGE_KEY = "subscription-manager:language";
+export const LANGUAGE_STORAGE_KEY = "frovely:language";
 export const SUPPORTED_LANGUAGES = ["fr", "en", "es"];
 
 export const dictionaries = {
   fr: {
-    appName: "Subscription Manager",
+    appName: "Frovely",
     login: "Connexion",
     register: "Inscription",
     logout: "Déconnexion",
@@ -314,7 +314,7 @@ export const dictionaries = {
     ]
   },
   es: {
-    appName: "Subscription Manager",
+    appName: "Frovely",
     login: "Iniciar sesión",
     register: "Registrarse",
     logout: "Cerrar sesión",
@@ -624,7 +624,7 @@ export const dictionaries = {
     ]
   },
   en: {
-    appName: "Subscription Manager",
+    appName: "Frovely",
     login: "Login",
     register: "Register",
     logout: "Logout",

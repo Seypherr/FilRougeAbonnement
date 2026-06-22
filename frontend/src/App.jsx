@@ -40,7 +40,7 @@ export function App() {
   const t = getDictionary(language);
   const { user, forgotPassword, loading, logout, resendVerification, updateProfile } = useAuth();
   const subscriptionState = useSubscriptions("", Boolean(user && user.emailVerified !== false));
-  const onboardingStorageKey = user ? `subscription-manager:onboarding:v1:${user.id ?? user.email}` : "";
+  const onboardingStorageKey = user ? `frovely:onboarding:v1:${user.id ?? user.email}` : "";
 
   const setLanguage = (nextLanguage) => {
     const normalizedLanguage = normalizeLanguage(nextLanguage);

@@ -1,4 +1,4 @@
-# Subscription Manager
+# Frovely
 
 Application web bilingue de gestion d'abonnements réalisée avec React, Express, Prisma et PostgreSQL.
 

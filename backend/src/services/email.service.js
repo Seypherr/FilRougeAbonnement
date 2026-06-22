@@ -61,7 +61,7 @@ export async function sendVerificationEmail(user, token) {
     subject: "Verifiez votre adresse email",
     html: buildActionEmail({
       title: "Verifiez votre adresse email",
-      intro: "Bienvenue dans Subscription Manager. Cliquez sur le bouton ci-dessous pour activer votre compte.",
+      intro: "Bienvenue dans Frovely. Cliquez sur le bouton ci-dessous pour activer votre compte.",
       actionLabel: "Verifier mon email",
       url
     }),

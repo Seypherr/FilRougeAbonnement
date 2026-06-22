@@ -36,7 +36,7 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
-        value: Subscription Manager <onboarding@resend.dev>
+        value: Frovely <onboarding@resend.dev>
       - key: AUTH_RATE_LIMIT_WINDOW_MS
         value: "900000"
       - key: AUTH_RATE_LIMIT_MAX

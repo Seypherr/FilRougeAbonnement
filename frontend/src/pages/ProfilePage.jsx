@@ -225,7 +225,7 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
   const [pendingProfileSave, setPendingProfileSave] = useState(null);
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [forgotPasswordConfirmationOpen, setForgotPasswordConfirmationOpen] = useState(false);
-  const notificationsStorageKey = `subscription-manager:push-notifications:${user.id ?? user.email}`;
+  const notificationsStorageKey = `frovely:push-notifications:${user.id ?? user.email}`;
   const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(() => window.localStorage.getItem(notificationsStorageKey) === "enabled");
   const [form, setForm] = useState({
     name: user.name ?? "",
@@ -387,13 +387,13 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
   };
 
   const openSupportEmail = () => {
-    window.location.href = `mailto:support@subscription-manager.local?subject=${encodeURIComponent(t.supportSection)}`;
+    window.location.href = `mailto:support@frovely.local?subject=${encodeURIComponent(t.supportSection)}`;
   };
 
   return (
-    <div className="h-[100svh] overflow-hidden bg-[#F8F9FB] px-4 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] pt-5 text-slate-900 sm:px-5 lg:h-full lg:px-0 lg:pb-0 lg:pt-0">
-      <section className="mx-auto flex h-full max-w-xl flex-col justify-center gap-3 lg:grid lg:max-w-none lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)] lg:items-stretch lg:gap-5">
-        <header className="shrink-0 rounded-[28px] border border-slate-100 bg-white p-5 text-left shadow-[0_18px_42px_-32px_rgba(15,23,42,0.35)] lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:p-6">
+    <div className="min-h-[100svh] overflow-y-auto bg-[#F8F9FB] px-4 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] pt-5 text-slate-900 sm:px-5 lg:h-full lg:min-h-0 lg:overflow-hidden lg:px-0 lg:pb-0 lg:pt-0">
+      <section className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-3 lg:grid lg:h-full lg:max-w-none lg:grid-cols-[minmax(230px,0.82fr)_minmax(0,1.7fr)] lg:items-stretch lg:gap-4 xl:grid-cols-[minmax(300px,0.95fr)_minmax(0,1.9fr)] xl:gap-5">
+        <header className="shrink-0 rounded-[28px] border border-slate-100 bg-white p-5 text-left shadow-[0_18px_42px_-32px_rgba(15,23,42,0.35)] lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:overflow-hidden lg:p-5 xl:p-6">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">{t.subscriptionDetails}</p>
             {appPlan ? (
@@ -435,10 +435,10 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
               </div>
             ) : (
               <div className="mt-4 grid gap-3.5">
-                <div className="rounded-[24px] bg-[#F4F0FF] p-4 lg:p-3.5">
+                <div className="rounded-[24px] bg-[#F4F0FF] p-4 lg:p-3 xl:p-4">
                   <p className="text-xs font-black uppercase tracking-wide text-[#7047EB]/60">{t.currentPlan}</p>
                   <p className="mt-1.5 text-2xl font-black text-slate-950">{t.freePlan}</p>
-                  <p className="mt-2 text-3xl font-black text-[#7047EB]">{formatMoney(0)}</p>
+                  <p className="mt-2 text-3xl font-black text-[#7047EB] lg:text-2xl xl:text-3xl">{formatMoney(0)}</p>
                 </div>
                 <div className="grid gap-2.5 text-sm font-semibold text-slate-500">
                   <div className="flex items-center justify-between gap-3">
@@ -454,16 +454,16 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                     <span className="text-right font-black text-slate-900">{t.noCancellationNeeded}</span>
                   </div>
                 </div>
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500 lg:p-3.5">{t.noAppPlanHelp}</p>
+                <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500 lg:p-3 xl:p-4">{t.noAppPlanHelp}</p>
               </div>
             )}
           </div>
         </header>
 
-        <section className="grid min-h-0 shrink gap-3 lg:grid lg:h-full lg:grid-rows-[1fr_1fr_1.15fr] lg:gap-5">
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:rounded-[28px] lg:p-6">
+        <section className="grid min-h-0 shrink gap-3 lg:h-full lg:grid-rows-[minmax(0,0.9fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:gap-4 xl:gap-5">
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
             {isEditing ? (
-              <form className="grid gap-3 lg:grid-cols-2 lg:gap-4" onSubmit={handleProfileSubmit} noValidate>
+              <form className="grid gap-3 xl:grid-cols-2 xl:gap-4" onSubmit={handleProfileSubmit} noValidate>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</label>
                   <input
@@ -485,9 +485,9 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
                   />
                 </div>
-                {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700 lg:col-span-2">{profileError}</p>}
-                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 lg:col-span-2">{t.profileSaved}</p>}
-                <div className="grid grid-cols-2 gap-3 lg:col-span-2">
+                {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700 xl:col-span-2">{profileError}</p>}
+                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 xl:col-span-2">{t.profileSaved}</p>}
+                <div className="grid grid-cols-2 gap-3 xl:col-span-2">
                   <button
                     type="button"
                     onClick={cancelEditing}
@@ -506,7 +506,7 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                 </div>
               </form>
             ) : (
-              <div className="grid gap-3 lg:grid-cols-2 lg:gap-4">
+              <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</p>
                   <p className="mt-1 break-words text-sm font-black text-slate-900 lg:text-lg">{form.name || "-"}</p>
@@ -515,11 +515,11 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</p>
                   <p className="mt-1 break-all text-sm font-black text-slate-900 lg:text-lg">{form.email || "-"}</p>
                 </div>
-                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 lg:col-span-2">{t.profileSaved}</p>}
+                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 xl:col-span-2">{t.profileSaved}</p>}
                 <button
                   type="button"
                   onClick={startEditing}
-                  className="rounded-[16px] bg-[#7047EB] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] lg:col-span-2 lg:rounded-[18px] lg:py-4"
+                  className="rounded-[16px] bg-[#7047EB] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] xl:col-span-2 lg:rounded-[18px] lg:py-4"
                 >
                   {editProfileLabel}
                 </button>
@@ -527,7 +527,7 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
             )}
           </div>
 
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:rounded-[28px] lg:p-6">
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
             <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.preferences}</p>
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
@@ -551,9 +551,9 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
             </div>
           </div>
 
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:rounded-[28px] lg:p-6">
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
             <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.supportSection}</p>
-            <div className="grid gap-2.5 lg:grid-cols-3 lg:gap-3">
+            <div className="grid gap-2.5 xl:grid-cols-3 xl:gap-3">
               <button
                 type="button"
                 onClick={() => setSupportModalOpen(true)}
