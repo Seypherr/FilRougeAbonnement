@@ -13,9 +13,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_ORIGIN
-        value: https://subscription-manager-frontend.onrender.com
+        value: https://subscription-manager-frontend-382a.onrender.com
       - key: CLIENT_ORIGINS
-        value: https://subscription-manager-frontend.onrender.com
+        value: https://subscription-manager-frontend-382a.onrender.com
       - key: DATABASE_URL
         fromDatabase:
           name: subscription-manager-db
@@ -57,7 +57,7 @@ services:
     autoDeployTrigger: commit
     envVars:
       - key: VITE_API_URL
-        value: https://subscription-manager-api.onrender.com/api
+        value: https://subscription-manager-api-wflh.onrender.com/api
     routes:
       - type: rewrite
         source: /*

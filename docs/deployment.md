@@ -50,8 +50,8 @@ Backend:
 
 ```env
 NODE_ENV=production
-CLIENT_ORIGIN=https://subscription-manager-frontend.onrender.com
-CLIENT_ORIGINS=https://subscription-manager-frontend.onrender.com
+CLIENT_ORIGIN=https://subscription-manager-frontend-382a.onrender.com
+CLIENT_ORIGINS=https://subscription-manager-frontend-382a.onrender.com
 DATABASE_URL=<genere depuis subscription-manager-db>
 JWT_SECRET=<genere automatiquement par Render>
 JWT_EXPIRES_IN=7d
@@ -72,7 +72,7 @@ ADMIN_NAME=Admin Subscription
 Frontend:
 
 ```env
-VITE_API_URL=https://subscription-manager-api.onrender.com/api
+VITE_API_URL=https://subscription-manager-api-wflh.onrender.com/api
 ```
 
 Si Render attribue un sous-domaine different parce qu'un nom est deja pris, mettre a jour:
@@ -130,7 +130,7 @@ Mesures presentes:
 
 Verifier:
 
-- `https://subscription-manager-api.onrender.com/api/health`
+- `https://subscription-manager-api-wflh.onrender.com/api/health`
 - Chargement du frontend public.
 - Inscription utilisateur.
 - Verification email via Resend.
