@@ -1,12 +1,14 @@
+import { useEffect, useRef, useState } from "react";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
 import { UserAvatar } from "../components/UserAvatar.jsx";
-import { translateCategoryName } from "../i18n/dictionaries.js";
-import { formatMoney, getRenewalAlerts, getSubscriptionStats } from "../utils/subscriptions.js";
+import { getLanguageLocale, translateCategoryName } from "../i18n/dictionaries.js";
+import { formatMoney, getRenewalAlerts, getSubscriptionStats, parseCalendarDate } from "../utils/subscriptions.js";
 
 function getDaysUntil(dateValue) {
   const today = new Date();
-  const due = new Date(dateValue);
+  const due = parseCalendarDate(dateValue);
+  if (!due) return Number.NaN;
   return Math.ceil((due.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0)) / 86400000);
 }
 
@@ -18,7 +20,7 @@ function getDueLabel(dateValue, t) {
   return { text: t.inDays.replace("{count}", diff), urgent: diff <= 7 };
 }
 
-function RenewalCard({ t, item, index, desktop = false }) {
+function RenewalCard({ t, item, money, desktop = false }) {
   const due = getDueLabel(item.renewalDate, t);
   return (
     <div className={`flex items-center gap-4 bg-white transition-all ${desktop ? "rounded-[20px] px-6 py-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]" : "rounded-[20px] p-4 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.04)]"}`}>
@@ -32,17 +34,20 @@ function RenewalCard({ t, item, index, desktop = false }) {
           <span className={`text-xs ${due.urgent ? "rounded-md bg-rose-100 px-2 py-1 font-bold uppercase tracking-widest text-rose-600" : "font-medium text-slate-400"}`}>{due.text}</span>
         ) : (
           <>
-            <span className="text-[15px] font-bold leading-tight text-slate-800">{formatMoney(item.price)}</span>
+            <span className="text-[15px] font-bold leading-tight text-slate-800">{money(item.price)}</span>
             <span className={`mt-0.5 ${due.urgent ? "rounded-md bg-rose-100 px-2 py-1 text-[10px] font-bold uppercase tracking-widest leading-none text-rose-600" : "text-[12px] font-medium text-slate-400"}`}>{due.text}</span>
           </>
         )}
-        {desktop && <span className="text-[15px] font-bold text-slate-800">{formatMoney(item.price)}</span>}
+        {desktop && <span className="text-[15px] font-bold text-slate-800">{money(item.price)}</span>}
       </div>
     </div>
   );
 }
 
-export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, error, user, setTab, onAddSubscription }) {
+export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, error, user, currency = "EUR", language = "fr", setTab, onAddSubscription }) {
+  const [alertsOpen, setAlertsOpen] = useState(false);
+  const alertsMenuRef = useRef(null);
+  const money = (value) => formatMoney(value, currency, getLanguageLocale(language));
   const stats = getSubscriptionStats(subscriptions, totalMonthlyAmount);
   const renewalAlerts = getRenewalAlerts(subscriptions);
   const hasRenewalAlert = renewalAlerts.length > 0;
@@ -55,23 +60,73 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
     .reduce((sum, item) => sum + Number(item.monthlyAmount ?? 0), 0);
   const displayName = user?.name ?? t.fallbackUser;
 
+  useEffect(() => {
+    if (!alertsOpen) return undefined;
+
+    const closeOnOutsidePress = (event) => {
+      if (!alertsMenuRef.current?.contains(event.target)) setAlertsOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setAlertsOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeOnOutsidePress);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsidePress);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [alertsOpen]);
+
   return (
     <>
-      <div className="relative min-h-screen overflow-x-hidden bg-[#F8F9FB] pb-32 lg:hidden">
+      <div className="mobile-page relative min-h-[100svh] overflow-x-hidden bg-[#F8F9FB] lg:hidden">
         <div className="absolute left-0 top-0 z-0 h-[360px] w-full rounded-b-[48px] bg-[linear-gradient(145deg,#6C51FF_0%,#9542FF_100%)]" />
-        <main className="relative z-10 flex min-h-screen flex-col">
-          <header className="relative z-20 flex items-center justify-between px-6 pb-6 pt-12">
+        <main className="relative z-10 flex min-h-[100svh] flex-col">
+          <header className="mobile-top-safe relative z-20 flex items-center justify-between px-5 pb-6 sm:px-6">
             <div className="flex flex-col gap-0.5">
               <span className="text-[11px] font-bold uppercase tracking-widest text-white/70">{t.welcomeBack}</span>
               <h1 className="max-w-[220px] truncate text-xl font-bold tracking-tight text-white">{displayName}</h1>
             </div>
             <div className="flex items-center gap-3">
-              <div
-                aria-label={t.renewalAlerts}
-                className="relative flex size-12 items-center justify-center rounded-[16px] border border-white/20 bg-white/10 text-white shadow-sm backdrop-blur-md"
-              >
-                <i className="ph ph-bell text-[22px]" />
-                {hasRenewalAlert && <span data-testid="renewal-alert-dot" className="absolute right-3 top-3 size-2.5 rounded-full bg-rose-400 ring-2 ring-[#7B42FF]" />}
+              <div ref={alertsMenuRef} className="relative">
+                <button
+                  type="button"
+                  aria-label={t.renewalAlerts}
+                  aria-expanded={alertsOpen}
+                  aria-controls="renewal-alerts-menu"
+                  onClick={() => setAlertsOpen((open) => !open)}
+                  className={`relative flex size-12 items-center justify-center rounded-[16px] border text-white shadow-sm backdrop-blur-md transition-all duration-200 active:scale-95 ${alertsOpen ? "border-slate-950/20 bg-slate-950/30 shadow-inner" : "border-white/20 bg-white/10 hover:bg-white/20"}`}
+                >
+                  <i className={`ph ph-bell text-[22px] transition-transform duration-200 ${alertsOpen ? "scale-90" : "scale-100"}`} />
+                  {hasRenewalAlert && <span data-testid="renewal-alert-dot" className="absolute right-3 top-3 size-2.5 rounded-full bg-rose-400 ring-2 ring-[#7B42FF]" />}
+                </button>
+                {alertsOpen && (
+                  <section id="renewal-alerts-menu" aria-label={t.renewalAlerts} className="floating-menu-enter absolute right-0 top-[calc(100%+0.75rem)] z-40 w-[min(19rem,calc(100vw-2.5rem))] origin-top-right rounded-[20px] border border-slate-100 bg-white p-3 text-slate-900 shadow-[0_20px_45px_-18px_rgba(15,23,42,0.45)]">
+                    <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                      <h2 className="text-sm font-black">{t.renewalAlerts}</h2>
+                      <span className="rounded-full bg-[#F4F0FF] px-2 py-0.5 text-xs font-black text-[#7047EB]">{renewalAlerts.length}</span>
+                    </div>
+                    {renewalAlerts.length === 0 ? (
+                      <p className="rounded-xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-500">{t.noRenewalAlerts}</p>
+                    ) : (
+                      <div className="grid gap-1.5">
+                        {renewalAlerts.slice(0, 4).map((item) => {
+                          const due = getDueLabel(item.renewalDate, t);
+                          return (
+                            <button key={item.id} type="button" onClick={() => { setAlertsOpen(false); setTab("subscriptions"); }} className="flex min-w-0 items-center gap-2.5 rounded-xl px-2 py-2 text-left transition hover:bg-[#F4F0FF]">
+                              <SubscriptionLogo name={item.name} className="size-8 shrink-0 rounded-lg" />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-black text-slate-900">{item.name}</span>
+                                <span className={`block text-xs font-bold ${due.urgent ? "text-rose-600" : "text-slate-500"}`}>{due.text}</span>
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                )}
               </div>
               <button
                 type="button"
@@ -84,17 +139,17 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             </div>
           </header>
 
-          <section className="relative z-10 px-6">
+          <section className="relative z-10 px-5 sm:px-6">
             <div className="flex w-full flex-col items-center pb-8 pt-2 text-white">
               <span className="text-[13px] font-medium text-white/80">{t.monthlySpending}</span>
               <div className="mt-4 flex items-baseline justify-center gap-1">
-                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(totalMonthlyAmount)}</span>
+                <span className="max-w-full truncate text-4xl font-bold leading-none tracking-tight text-white">{money(totalMonthlyAmount)}</span>
               </div>
               <div className="mt-6 flex justify-center">
                 <div className="flex items-center gap-2 rounded-xl border border-white/5 bg-black/15 px-4 py-2 backdrop-blur-md">
                   <i className="ph-fill ph-calendar-blank text-sm text-white/80" />
                   <span className="text-xs font-medium text-white/80">{t.estimatedYearly}</span>
-                  <span className="text-xs font-bold text-white">{formatMoney(stats.totalYearly)}</span>
+                  <span className="text-xs font-bold text-white">{money(stats.totalYearly)}</span>
                 </div>
               </div>
             </div>
@@ -121,7 +176,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             </div>
           </section>
 
-          <section className="relative z-20 mt-8 flex flex-1 flex-col px-6">
+          <section className="relative z-20 mt-8 flex flex-1 flex-col px-5 sm:px-6">
             <div className="mb-5 flex items-center justify-between px-1">
               <h2 className="text-[18px] font-bold text-slate-800">{t.nextRenewals}</h2>
               <button type="button" aria-label={t.viewAllSubscriptions} onClick={() => setTab("subscriptions")} className="rounded-lg bg-[#6C51FF]/10 px-3 py-1.5 text-[13px] font-semibold text-[#6C51FF] transition-colors hover:bg-[#6C51FF]/20">
@@ -136,7 +191,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
               ) : renewals.length === 0 ? (
                 <StatePanel title={t.emptyRenewalsTitle} message={t.emptyRenewalsMessage} tone="empty" icon="ph-calendar-x" />
               ) : (
-                renewals.map((item, index) => <RenewalCard key={item.id} t={t} item={item} index={index} />)
+                renewals.map((item) => <RenewalCard key={item.id} t={t} item={item} money={money} />)
               )}
             </div>
           </section>
@@ -151,9 +206,9 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             <div className="relative z-10 text-center">
               <p className="text-sm font-medium tracking-wide text-white/90">{t.monthlyTotal}</p>
               <div className="mt-1 flex items-baseline justify-center gap-1">
-                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{formatMoney(totalMonthlyAmount)}</span>
+                <span className="text-[56px] font-bold leading-none tracking-tight text-white">{money(totalMonthlyAmount)}</span>
               </div>
-              <p className="mt-2 text-sm font-medium text-white/70">{t.dueNext7Days}: {formatMoney(dueNext7Days)}</p>
+              <p className="mt-2 text-sm font-medium text-white/70">{t.dueNext7Days}: {money(dueNext7Days)}</p>
             </div>
           </section>
           <section className="flex flex-col justify-between rounded-[24px] bg-[linear-gradient(145deg,#7B42FF_0%,#6C51FF_100%)] p-6 text-white shadow-[0_14px_34px_-18px_rgba(123,66,255,0.65)]">
@@ -162,7 +217,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             </div>
             <div>
               <p className="mb-1.5 text-xs font-bold uppercase tracking-wider text-white/80">{t.estimatedYearly}</p>
-              <p className="text-3xl font-bold">{formatMoney(stats.totalYearly)}</p>
+              <p className="text-3xl font-bold">{money(stats.totalYearly)}</p>
             </div>
           </section>
           <section className="flex flex-col gap-4">
@@ -190,7 +245,7 @@ export function DashboardPage({ t, subscriptions, totalMonthlyAmount, loading, e
             ) : renewals.length === 0 ? (
               <StatePanel title={t.emptyRenewalsTitle} message={t.emptyRenewalsMessage} tone="empty" icon="ph-calendar-x" />
             ) : (
-              renewals.map((item, index) => <RenewalCard key={item.id} t={t} item={item} index={index} desktop />)
+              renewals.map((item) => <RenewalCard key={item.id} t={t} item={item} money={money} desktop />)
             )}
           </div>
         </section>

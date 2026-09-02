@@ -7,11 +7,12 @@ process.env.CLIENT_ORIGIN = "http://localhost:5173";
 process.env.DATABASE_URL = "postgresql://test:test@localhost:5432/test";
 process.env.JWT_SECRET = "test-secret-with-more-than-24-characters";
 process.env.JWT_EXPIRES_IN = "7d";
-process.env.COOKIE_NAME = "subscription_manager_token";
+process.env.COOKIE_NAME = "frovely_session";
 process.env.COOKIE_SECURE = "false";
 process.env.COOKIE_SAME_SITE = "lax";
 process.env.AUTH_RATE_LIMIT_WINDOW_MS = "60000";
 process.env.AUTH_RATE_LIMIT_MAX = "100";
+process.env.BETA_INVITE_ONLY = "false";
 
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
@@ -36,6 +37,18 @@ const { mockPrisma } = vi.hoisted(() => ({
       update: vi.fn(),
       delete: vi.fn()
     },
+    dailyProductMetric: {
+      upsert: vi.fn()
+    },
+    betaInvite: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      count: vi.fn()
+    },
+    $transaction: vi.fn(async (callback) => callback(mockPrisma)),
     $disconnect: vi.fn()
   }
 }));
@@ -45,6 +58,7 @@ vi.mock("../src/config/prisma.js", () => ({
 }));
 
 const { app } = await import("../src/app.js");
+const { env } = await import("../src/config/env.js");
 
 async function csrfHeaders(agent) {
   const response = await agent.get("/api/auth/csrf").expect(200);
@@ -125,6 +139,22 @@ describe("auth API", () => {
     expect(response.headers["ratelimit-limit"] ?? response.headers["x-ratelimit-limit"]).toBeDefined();
   });
 
+  it("hides technical database errors from API users", async () => {
+    mockPrisma.user.findUnique.mockRejectedValueOnce(
+      new Error("Error validating datasource db: the URL must start with prisma://")
+    );
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "Password123!" })
+      .expect(503);
+
+    expect(response.body).toEqual({
+      message: "Le service est temporairement indisponible. Reessayez dans quelques instants."
+    });
+    expect(JSON.stringify(response.body)).not.toContain("datasource");
+  });
+
   it("registers a user and sets an HTTP-only cookie", async () => {
     mockPrisma.user.findUnique.mockResolvedValueOnce(null);
     mockPrisma.user.create.mockResolvedValueOnce(user);
@@ -158,7 +188,7 @@ describe("auth API", () => {
       .send({ name: user.name, email: "bad..email@test.local", password: "Password123!" })
       .expect(400);
 
-    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
   });
 
   it("prepares a password reset without revealing whether the email exists", async () => {
@@ -237,6 +267,72 @@ describe("auth API", () => {
     );
   });
 
+  it("requires and atomically consumes a valid beta invitation", async () => {
+    env.BETA_INVITE_ONLY = true;
+    mockPrisma.$transaction.mockImplementation(async (callback) => callback(mockPrisma));
+    const invite = {
+      id: "44444444-4444-4444-8444-444444444444",
+      email: user.email,
+      tokenHash: "ignored-in-mock",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      usedAt: null,
+      revokedAt: null
+    };
+    const invitedUser = { ...user, emailVerified: false, preferredLanguage: "en" };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.betaInvite.findUnique.mockResolvedValueOnce(invite);
+    mockPrisma.user.create.mockResolvedValueOnce(invitedUser);
+    mockPrisma.betaInvite.updateMany.mockResolvedValueOnce({ count: 1 });
+
+    await request(app)
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!", preferredLanguage: "en", inviteToken: "c".repeat(43) })
+      .expect(201);
+
+    expect(mockPrisma.betaInvite.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ id: invite.id }),
+      data: expect.objectContaining({ usedAt: expect.any(Date) })
+    }));
+    env.BETA_INVITE_ONLY = false;
+  });
+
+  it("rejects beta registration without an invitation token", async () => {
+    env.BETA_INVITE_ONLY = true;
+
+    await request(app)
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!", preferredLanguage: "en" })
+      .expect(403);
+
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+    env.BETA_INVITE_ONLY = false;
+  });
+
+  it("rejects a beta invitation that has already been used", async () => {
+    env.BETA_INVITE_ONLY = true;
+    mockPrisma.$transaction.mockImplementation(async (callback) => callback(mockPrisma));
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.betaInvite.findUnique.mockResolvedValueOnce({
+      id: "44444444-4444-4444-8444-444444444444",
+      email: user.email,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      usedAt: new Date(),
+      revokedAt: null
+    });
+
+    await request(app)
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!", preferredLanguage: "en", inviteToken: "d".repeat(43) })
+      .expect(403);
+
+    expect(mockPrisma.user.create).not.toHaveBeenCalled();
+    env.BETA_INVITE_ONLY = false;
+  });
+
+  it("keeps beta invitation administration behind authentication", async () => {
+    await request(app).get("/api/admin/beta-invites").expect(401);
+  });
+
   it("blocks full subscription access when email is not verified", async () => {
     const agent = request.agent(app);
     const unverifiedUser = { ...user, emailVerified: false };
@@ -308,6 +404,92 @@ describe("auth API", () => {
     );
   });
 
+  it("stores an account currency, time zone, and reminder preferences", async () => {
+    const agent = request.agent(app);
+    const updatedUser = {
+      ...user,
+      preferredCurrency: "USD",
+      timeZone: "America/New_York",
+      reminderEmailEnabled: true,
+      reminderDaysBefore: [14, 3, 1]
+    };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.user.update.mockResolvedValueOnce(updatedUser);
+
+    const response = await agent
+      .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
+      .send({
+        preferredCurrency: "USD",
+        timeZone: "America/New_York",
+        reminderEmailEnabled: true,
+        reminderDaysBefore: [14, 3, 1]
+      })
+      .expect(200);
+
+    expect(response.body.user).toEqual(expect.objectContaining({
+      preferredCurrency: "USD",
+      timeZone: "America/New_York",
+      reminderDaysBefore: [14, 3, 1]
+    }));
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ preferredCurrency: "USD", timeZone: "America/New_York" })
+    }));
+  });
+
+  it("rejects malformed international profile preferences", async () => {
+    const agent = request.agent(app);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    await agent
+      .put("/api/auth/me")
+      .set(await csrfHeaders(agent))
+      .send({ preferredCurrency: "EURO", timeZone: "Not/AZone", reminderDaysBefore: [3, 3] })
+      .expect(400);
+
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("completes onboarding with server-side preferences and records an aggregate metric", async () => {
+    const agent = request.agent(app);
+    const onboardingUser = { ...user, onboardingCompletedAt: null };
+    const completedUser = { ...onboardingUser, preferredCurrency: "GBP", timeZone: "Europe/London", onboardingCompletedAt: new Date() };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(onboardingUser);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(onboardingUser);
+    mockPrisma.user.update.mockResolvedValueOnce(completedUser);
+
+    await agent
+      .post("/api/auth/onboarding/complete")
+      .set(await csrfHeaders(agent))
+      .send({ preferredCurrency: "GBP", timeZone: "Europe/London", reminderEmailEnabled: true, reminderDaysBefore: [7, 1] })
+      .expect(200);
+
+    expect(mockPrisma.dailyProductMetric.upsert).toHaveBeenCalled();
+  });
+
   it("rejects imported image data URLs for the profile avatar", async () => {
     const agent = request.agent(app);
     const importedAvatar = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB";
@@ -327,7 +509,7 @@ describe("auth API", () => {
       .send({ avatarUrl: importedAvatar })
       .expect(400);
 
-    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
@@ -394,7 +576,7 @@ describe("auth API", () => {
       .send({ email: "not-an-email" })
       .expect(400);
 
-    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
@@ -416,7 +598,7 @@ describe("auth API", () => {
       .send({ name: "Still User", role: "ADMIN", isActive: false })
       .expect(400);
 
-    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 
@@ -533,7 +715,7 @@ describe("subscription API", () => {
       })
       .expect(400);
 
-    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
     expect(mockPrisma.subscription.create).not.toHaveBeenCalled();
   });
 
@@ -560,7 +742,7 @@ describe("subscription API", () => {
       })
       .expect(400);
 
-    expect(response.body.message).toBe("Validation failed");
+    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
     expect(mockPrisma.subscription.create).not.toHaveBeenCalled();
   });
 

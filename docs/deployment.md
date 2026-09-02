@@ -27,9 +27,10 @@ La configuration principale est dans `render.yaml` a la racine du depot.
 
 Elle cree:
 
-- `subscription-manager-api`: service web Node.
-- `subscription-manager-frontend`: site statique Vite.
-- `subscription-manager-db`: base PostgreSQL.
+- `frovely-api`: service web Node.
+- `frovely-web`: site statique Vite.
+- `frovely-db`: base PostgreSQL.
+- `frovely-renewal-reminders`: cron job Node toutes les quinze minutes.
 
 Configuration backend:
 
@@ -49,35 +50,38 @@ Backend:
 
 ```env
 NODE_ENV=production
-CLIENT_ORIGIN=https://subscription-manager-frontend-382a.onrender.com
-CLIENT_ORIGINS=https://subscription-manager-frontend-382a.onrender.com
-DATABASE_URL=<genere depuis subscription-manager-db>
+CLIENT_ORIGIN=https://app.frovely.app
+CLIENT_ORIGINS=https://app.frovely.app
+DATABASE_URL=<genere depuis frovely-db>
 JWT_SECRET=<genere automatiquement par Render>
 JWT_EXPIRES_IN=7d
-COOKIE_NAME=subscription_manager_token
+COOKIE_NAME=frovely_session
 COOKIE_SECURE=true
-COOKIE_SAME_SITE=none
-CSRF_COOKIE_NAME=subscription_manager_csrf
+COOKIE_SAME_SITE=lax
+CSRF_COOKIE_NAME=frovely_csrf
 CSRF_HEADER_NAME=x-csrf-token
 RESEND_API_KEY=<a renseigner dans Render>
-EMAIL_FROM=Frovely <onboarding@resend.dev>
+EMAIL_FROM=Frovely <support@domaine-verifie>
+EMAIL_REPLY_TO=support@frovely.app
+PUBLIC_REGISTRATION_ENABLED=false
+BETA_INVITE_ONLY=true
+BETA_INVITE_LIMIT=30
+BETA_ACCESS_ENABLED=true
+PREMIUM_FEATURES_ENABLED=false
 AUTH_RATE_LIMIT_WINDOW_MS=900000
 AUTH_RATE_LIMIT_MAX=10
 ADMIN_EMAIL=<a renseigner dans Render>
 ADMIN_PASSWORD=<a renseigner dans Render>
-ADMIN_NAME=Admin Subscription
+ADMIN_NAME=Frovely Admin
 ```
 
 Frontend:
 
 ```env
-VITE_API_URL=https://subscription-manager-api-wflh.onrender.com/api
+VITE_API_URL=https://api.frovely.app/api
 ```
 
-Si Render attribue un sous-domaine different parce qu'un nom est deja pris, mettre a jour:
-
-- `VITE_API_URL` cote frontend avec l'URL API finale.
-- `CLIENT_ORIGIN` et `CLIENT_ORIGINS` cote backend avec l'URL frontend finale.
+Ces valeurs ne doivent etre activees qu'apres l'achat de `frovely.app`, le rattachement DNS et l'emission des certificats HTTPS par Render.
 
 ## Base de donnees, migrations et seed
 
@@ -117,7 +121,7 @@ Mesures presentes:
 - Rate-limit sur login/register.
 - Cookie HTTP-only pour le JWT.
 - Cookie `Secure` obligatoire en production.
-- `SameSite=None` pour l'authentification cross-site entre frontend et backend Render.
+- `SameSite=Lax` pour les sous-domaines `app` et `api` du même domaine Frovely.
 - CORS par allowlist stricte via `CLIENT_ORIGIN` et `CLIENT_ORIGINS`.
 - Protection CSRF avec le header `x-csrf-token`.
 - Validation Zod sur les routes sensibles.
@@ -128,9 +132,9 @@ Mesures presentes:
 
 Verifier:
 
-- `https://subscription-manager-api-wflh.onrender.com/api/health`
+- `https://api.<domaine-frovely>/api/health`
 - Chargement du frontend public.
-- Inscription utilisateur.
+- Creation d'une invitation beta par un administrateur, puis inscription depuis le lien prive.
 - Verification email via Resend.
 - Connexion utilisateur.
 - Creation, modification et archivage d'un abonnement.
@@ -140,7 +144,7 @@ Verifier:
 
 ## Limites a surveiller
 
-- Le plan gratuit Render peut mettre les services en veille.
-- `onboarding@resend.dev` est surtout adapte aux tests Resend. Pour envoyer a de vrais utilisateurs, configurer un domaine verifie Resend et remplacer `EMAIL_FROM`.
-- Si Render change les sous-domaines publics, ajuster les trois variables d'URL indiquees plus haut.
+- Le service web gratuit peut se mettre en veille ; le cron Render est facturé séparément.
+- Un domaine Resend vérifié est nécessaire pour envoyer à de vrais utilisateurs.
+- Les valeurs `sync: false` de `render.yaml` sont à renseigner dans Render, jamais dans Git.
 - Le stockage d'avatar reste externe uniquement via URL HTTPS.

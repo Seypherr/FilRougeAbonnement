@@ -39,23 +39,30 @@ export function AdminPage({ t, notify, currentUser }) {
   const [tab, setTab] = useState("users");
   const [users, setUsers] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "USER", isActive: true });
+  const [newInvite, setNewInvite] = useState({ email: "", preferredLanguage: "fr" });
+  const [latestInviteUrl, setLatestInviteUrl] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [creatingInvite, setCreatingInvite] = useState(false);
   const [busyUserId, setBusyUserId] = useState("");
   const [busySubscriptionId, setBusySubscriptionId] = useState("");
+  const [busyInviteId, setBusyInviteId] = useState("");
 
   const load = async () => {
     setError("");
     setLoading(true);
     try {
-      const [userData, subscriptionData] = await Promise.all([
+      const [userData, subscriptionData, inviteData] = await Promise.all([
         apiRequest("/admin/users"),
-        apiRequest("/admin/subscriptions")
+        apiRequest("/admin/subscriptions"),
+        apiRequest("/admin/beta-invites")
       ]);
       setUsers(userData.users);
       setSubscriptions(subscriptionData.subscriptions);
+      setInvites(inviteData.invites);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -130,10 +137,43 @@ export function AdminPage({ t, notify, currentUser }) {
     }
   };
 
+  const createInvite = async (event) => {
+    event.preventDefault();
+    setCreatingInvite(true);
+    setLatestInviteUrl("");
+    try {
+      const data = await apiRequest("/admin/beta-invites", { method: "POST", body: newInvite });
+      setNewInvite({ email: "", preferredLanguage: "fr" });
+      setLatestInviteUrl(data.inviteUrl ?? "");
+      notify(t.betaInviteCreated);
+      await load();
+    } catch (err) {
+      setError(err.message);
+      notify(err.message, "error");
+    } finally {
+      setCreatingInvite(false);
+    }
+  };
+
+  const revokeInvite = async (invite) => {
+    if (busyInviteId || invite.status !== "ACTIVE") return;
+    setBusyInviteId(invite.id);
+    try {
+      await apiRequest(`/admin/beta-invites/${invite.id}`, { method: "DELETE" });
+      notify(t.betaInviteRevoked);
+      await load();
+    } catch (err) {
+      setError(err.message);
+      notify(err.message, "error");
+    } finally {
+      setBusyInviteId("");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#F8F9FB] pb-28 text-slate-800 lg:min-h-0 lg:pb-8">
+    <div className="mobile-page min-h-[100svh] bg-[#F8F9FB] text-slate-800 lg:min-h-0 lg:pb-8">
       <header className="sticky top-0 z-30 border-b border-slate-100 bg-white shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)] lg:rounded-[24px] lg:border">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 pb-4 pt-12 lg:px-6 lg:pt-5">
+        <div className="mobile-top-safe mx-auto flex max-w-7xl items-center justify-between px-5 pb-4 lg:px-6 lg:pt-5">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-2xl bg-[#6C51FF]/10 text-[#6C51FF]">
               <i className="ph-fill ph-shield-check text-xl" />
@@ -144,9 +184,10 @@ export function AdminPage({ t, notify, currentUser }) {
             </div>
           </div>
         </div>
-        <div className="mx-auto flex max-w-7xl gap-6 px-5 lg:px-6">
-          <button aria-label={`${t.admin} ${t.users}`} onClick={() => setTab("users")} className={`border-b-2 pb-3 text-sm font-bold transition-colors ${tab === "users" ? "border-[#6C51FF] text-[#6C51FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>{t.users}</button>
-          <button aria-label={`${t.admin} ${t.subscriptions}`} onClick={() => setTab("subscriptions")} className={`border-b-2 pb-3 text-sm font-bold transition-colors ${tab === "subscriptions" ? "border-[#6C51FF] text-[#6C51FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>{t.subscriptions}</button>
+        <div className="no-scrollbar mx-auto flex max-w-7xl gap-6 overflow-x-auto px-5 lg:px-6">
+          <button aria-label={`${t.admin} ${t.users}`} onClick={() => setTab("users")} className={`shrink-0 border-b-2 pb-3 text-sm font-bold transition-colors ${tab === "users" ? "border-[#6C51FF] text-[#6C51FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>{t.users}</button>
+          <button aria-label={`${t.admin} ${t.subscriptions}`} onClick={() => setTab("subscriptions")} className={`shrink-0 border-b-2 pb-3 text-sm font-bold transition-colors ${tab === "subscriptions" ? "border-[#6C51FF] text-[#6C51FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>{t.subscriptions}</button>
+          <button aria-label={`${t.admin} ${t.betaInvites}`} onClick={() => setTab("invites")} className={`shrink-0 border-b-2 pb-3 text-sm font-bold transition-colors ${tab === "invites" ? "border-[#6C51FF] text-[#6C51FF]" : "border-transparent text-slate-400 hover:text-slate-600"}`}>{t.betaInvites}</button>
         </div>
       </header>
 
@@ -253,6 +294,29 @@ export function AdminPage({ t, notify, currentUser }) {
           </>
         )}
 
+        {tab === "invites" && (
+          <section className="space-y-5">
+            <form onSubmit={createInvite} className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)] md:grid-cols-[minmax(0,1fr)_140px_auto]">
+              <input aria-label={t.emailAddress} type="email" required value={newInvite.email} onChange={(event) => setNewInvite({ ...newInvite, email: event.target.value })} placeholder={t.emailAddress} className="min-h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-[#6C51FF]" disabled={creatingInvite} />
+              <select aria-label={t.language} value={newInvite.preferredLanguage} onChange={(event) => setNewInvite({ ...newInvite, preferredLanguage: event.target.value })} className="min-h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none focus:border-[#6C51FF]" disabled={creatingInvite}>
+                <option value="fr">FR</option><option value="en">EN</option><option value="es">ES</option>
+              </select>
+              <button disabled={creatingInvite} className="min-h-11 rounded-xl bg-[#6C51FF] px-5 text-sm font-black text-white disabled:opacity-60">{creatingInvite ? t.loading : t.sendBetaInvite}</button>
+            </form>
+            {latestInviteUrl && <p className="break-all rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{t.betaInviteLink}: <a className="underline" href={latestInviteUrl}>{latestInviteUrl}</a></p>}
+            <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)]">
+              <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-black text-slate-900">{t.betaCohort}</h2><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{invites.length}/30</span></div>
+              <div className="grid gap-2">
+                {invites.map((invite) => <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-50 p-3">
+                  <div><p className="text-sm font-bold text-slate-900">{invite.email}</p><p className="text-xs font-semibold text-slate-500">{t.betaInviteExpires}: {new Date(invite.expiresAt).toLocaleDateString()}</p></div>
+                  <div className="flex items-center gap-3"><span className="text-xs font-black text-slate-600">{invite.status}</span>{invite.status === "ACTIVE" && <button type="button" aria-label={`${t.revokeBetaInvite} ${invite.email}`} onClick={() => revokeInvite(invite)} disabled={busyInviteId === invite.id} className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 disabled:opacity-60">{t.revokeBetaInvite}</button>}</div>
+                </div>)}
+                {!loading && invites.length === 0 && <p className="py-8 text-center text-sm font-semibold text-slate-500">{t.noBetaInvites}</p>}
+              </div>
+            </section>
+          </section>
+        )}
+
         {tab === "subscriptions" && (
           <section className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)] lg:p-0">
             <div className="flex items-center justify-between px-1 pb-4 lg:px-6 lg:pb-0 lg:pt-5">
@@ -300,7 +364,7 @@ export function AdminPage({ t, notify, currentUser }) {
 
                       <div className="flex items-center justify-between gap-3">
                         <span className="text-xs font-bold text-slate-400 lg:hidden">{t.totalMonthly}</span>
-                        <p className="text-[13px] font-black text-slate-800">{formatMoney(sub.monthlyAmount)} <span className="font-bold text-slate-400">{t.perMonth}</span></p>
+                        <p className="text-[13px] font-black text-slate-800">{formatMoney(sub.monthlyAmount, sub.user?.preferredCurrency ?? "EUR")} <span className="font-bold text-slate-400">{t.perMonth}</span></p>
                       </div>
 
                       <div className="flex justify-end border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0">

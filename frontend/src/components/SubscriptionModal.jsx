@@ -61,11 +61,6 @@ function Field({ label, children, error }) {
   );
 }
 
-function formatEuroHints(prices = []) {
-  if (!prices.length) return "";
-  return prices.map((price) => `${String(price).replace(".", ",")} €`).join(" / ");
-}
-
 function getCatalogLogoPayload(service) {
   if (!service?.url) return null;
 
@@ -219,7 +214,7 @@ function ServiceNameInput({ t, value, error, onChange, onSelectService }) {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-black text-slate-800">{service.name}</span>
                   <span className="block truncate text-[11px] font-semibold text-slate-400">
-                    {[service.category, service.plan, formatEuroHints(service.priceHints)].filter(Boolean).join(" · ")}
+                    {[service.category, service.plan].filter(Boolean).join(" · ")}
                   </span>
                 </span>
                 <span className="hidden truncate text-[11px] font-semibold text-slate-400 sm:block">{service.domain}</span>
@@ -630,10 +625,14 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
   const [form, setForm] = useState(toFormData(subscription ?? emptySubscription));
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [autoCompletedPrice, setAutoCompletedPrice] = useState("");
   const [autoCompletedCategoryId, setAutoCompletedCategoryId] = useState("");
   const [saved, setSaved] = useState(false);
+  const formScrollRef = useRef(null);
   const isEditing = Boolean(subscription);
+
+  const scrollFormToTop = () => {
+    formScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const findCategoryId = (categoryName) => {
     const normalizedTarget = normalizeServiceName(categoryName);
@@ -663,9 +662,6 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
 
   const change = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-    if (field === "price") {
-      setAutoCompletedPrice("");
-    }
     if (field === "categoryId") {
       setAutoCompletedCategoryId("");
     }
@@ -680,26 +676,20 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
   const selectServiceSuggestion = (service) => {
     const plan = getServicePlanSuggestion(service.name);
     const categoryId = findCategoryId(service.category ?? plan?.category);
-    const defaultPrice = service.defaultPrice ?? service.priceHints?.[0] ?? plan?.defaultPrice;
-    const defaultPriceValue = defaultPrice !== null && defaultPrice !== undefined ? String(defaultPrice) : "";
-
     setForm((prev) => {
-      const shouldSuggestPrice = defaultPriceValue && (!prev.price || prev.price === autoCompletedPrice);
       const shouldSuggestCategory = categoryId && (!prev.categoryId || prev.categoryId === autoCompletedCategoryId);
 
       return {
         ...prev,
         name: service.name,
         billingCycle: service.billingCycle ?? prev.billingCycle,
-        categoryId: shouldSuggestCategory ? categoryId : prev.categoryId,
-        price: shouldSuggestPrice ? defaultPriceValue : prev.price
+        categoryId: shouldSuggestCategory ? categoryId : prev.categoryId
       };
     });
-    setAutoCompletedPrice(defaultPriceValue);
     setAutoCompletedCategoryId(categoryId || "");
     setError("");
     setFieldErrors((prev) => {
-      const { name: _name, price: _price, ...rest } = prev;
+      const { name: _name, ...rest } = prev;
       return rest;
     });
   };
@@ -736,9 +726,17 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
         className="subscription-modal-panel flex max-h-[calc(100dvh-12px)] min-h-0 w-full max-w-full touch-pan-y flex-col overflow-hidden rounded-t-[32px] bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:max-h-[min(92dvh,760px)] lg:max-w-3xl lg:rounded-[32px]"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex w-full shrink-0 justify-center pb-1 pt-3">
-          <div className="h-1.5 w-12 rounded-full bg-slate-200" />
-        </div>
+        <button
+          type="button"
+          aria-label={t.scrollFormTop}
+          title={t.scrollFormTop}
+          onClick={scrollFormToTop}
+          className="flex w-full shrink-0 justify-center pb-1 pt-3"
+        >
+          <span className="flex h-5 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition hover:bg-[#F4F0FF] hover:text-[#7047EB]">
+            <i className="ph-bold ph-caret-up text-xs" />
+          </span>
+        </button>
 
         <div className="z-10 flex shrink-0 items-center justify-between gap-4 rounded-t-[32px] border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -752,7 +750,7 @@ export function SubscriptionModal({ t, language = "fr", subscription, categories
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain bg-white p-4 sm:gap-5 sm:p-6">
+        <div ref={formScrollRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain bg-white p-4 sm:gap-5 sm:p-6">
           {(saved || error) && (
             <div className={`flex items-start gap-3 rounded-[14px] border p-3 ${error ? "border-red-200/60 bg-red-50" : "border-emerald-200/60 bg-emerald-50"}`}>
               <i className={`ph-fill ${error ? "ph-warning-circle text-red-600" : "ph-check-circle text-emerald-600"} mt-0.5 shrink-0 text-[20px]`} />

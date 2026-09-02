@@ -1,0 +1,17 @@
+{
+  "name": "Frovely",
+  "short_name": "Frovely",
+  "description": "Track subscriptions and upcoming renewals.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F7FB",
+  "theme_color": "#7047EB",
+  "icons": [
+    {
+      "src": "/favicon.png?v=frovely",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

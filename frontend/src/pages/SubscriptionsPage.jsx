@@ -2,8 +2,8 @@ import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { apiRequest } from "../api/client.js";
 import { StatePanel } from "../components/StatePanel.jsx";
 import { SubscriptionLogo } from "../components/SubscriptionLogo.jsx";
-import { translateCategoryName } from "../i18n/dictionaries.js";
-import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
+import { getLanguageLocale, translateCategoryName } from "../i18n/dictionaries.js";
+import { cycleLabels, formatMoney, parseCalendarDate } from "../utils/subscriptions.js";
 
 const SubscriptionModal = lazy(() => import("../components/SubscriptionModal.jsx").then((module) => ({ default: module.SubscriptionModal })));
 const SUBSCRIPTION_BATCH_SIZE = 12;
@@ -27,7 +27,8 @@ function getRenewalLabel(subscription, t) {
   if (subscription.status === "ARCHIVED") return t.archived;
   if (subscription.status === "INACTIVE") return t.billingSuspended;
   const now = new Date();
-  const date = new Date(subscription.renewalDate);
+  const date = parseCalendarDate(subscription.renewalDate);
+  if (!date) return "-";
   const diff = Math.ceil((date.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0)) / 86400000);
   if (diff <= 1) return t.renewsTomorrow;
   return t.renewsInDays.replace("{count}", diff);
@@ -43,7 +44,7 @@ function StatusBadge({ status, t }) {
   return <span className="rounded border border-slate-200/60 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-slate-500">{t.archived}</span>;
 }
 
-function SubscriptionCard({ t, sub, onEdit, onArchive, onDeletePermanent }) {
+function SubscriptionCard({ t, sub, currency, language, manageMode, onEdit, onArchive, onDeletePermanent }) {
   const isArchived = sub.status === "ARCHIVED";
   const isPaused = sub.status === "INACTIVE";
   const color = isArchived || isPaused ? "bg-slate-300" : "bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.2)]";
@@ -61,7 +62,7 @@ function SubscriptionCard({ t, sub, onEdit, onArchive, onDeletePermanent }) {
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <p className={`text-[15px] font-bold leading-tight ${isArchived || isPaused ? "text-slate-400" : "text-slate-900"}`}>{formatMoney(sub.price)}</p>
+          <p className={`text-[15px] font-bold leading-tight ${isArchived || isPaused ? "text-slate-400" : "text-slate-900"}`}>{formatMoney(sub.price, currency, getLanguageLocale(language))}</p>
           <StatusBadge status={sub.status} t={t} />
         </div>
       </div>
@@ -83,19 +84,21 @@ function SubscriptionCard({ t, sub, onEdit, onArchive, onDeletePermanent }) {
           <span className={`size-2 shrink-0 rounded-full ${color}`} />
           <span className={`truncate text-[12px] font-semibold ${isArchived || isPaused ? "font-medium text-slate-500" : "text-slate-700"}`}>{getRenewalLabel(sub, t)}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button aria-label={`Edit ${sub.name}`} onClick={() => onEdit(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95">
-            <i className="ph ph-pencil-simple text-[15px]" />
-          </button>
-          {!isArchived && (
-            <button aria-label={`Archive ${sub.name}`} onClick={() => onArchive(sub)} className="flex size-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 active:scale-95">
-              <i className="ph ph-archive text-[15px]" />
+        {manageMode && (
+          <div className="flex shrink-0 items-center gap-1.5" aria-label={t.actions}>
+            <button aria-label={`${t.editSubscription} ${sub.name}`} onClick={() => onEdit(sub)} className="flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95">
+              <i className="ph ph-pencil-simple text-[16px]" />
             </button>
-          )}
-          <button aria-label={`${t.deleteSubscription} ${sub.name}`} onClick={() => onDeletePermanent(sub)} className="flex size-8 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 active:scale-95">
-            <i className="ph ph-trash text-[15px]" />
-          </button>
-        </div>
+            {!isArchived && (
+              <button aria-label={`${t.archiveSubscription} ${sub.name}`} onClick={() => onArchive(sub)} className="flex size-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:bg-slate-50 hover:text-amber-700 active:scale-95">
+                <i className="ph ph-archive text-[16px]" />
+              </button>
+            )}
+            <button aria-label={`${t.deleteSubscription} ${sub.name}`} onClick={() => onDeletePermanent(sub)} className="flex size-9 items-center justify-center rounded-lg border border-red-100 bg-red-50 text-red-500 transition-colors hover:bg-red-100 hover:text-red-700 active:scale-95">
+              <i className="ph ph-trash text-[16px]" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -112,7 +115,7 @@ function LazyListLoader({ t }) {
   );
 }
 
-function LazySubscriptionGrid({ t, subscriptions, onEdit, onArchive, onDeletePermanent }) {
+function LazySubscriptionGrid({ t, language, currency, subscriptions, manageMode, onEdit, onArchive, onDeletePermanent }) {
   const [visibleCount, setVisibleCount] = useState(SUBSCRIPTION_BATCH_SIZE);
   const sentinelRef = useRef(null);
   const visibleSubscriptions = useMemo(() => subscriptions.slice(0, visibleCount), [subscriptions, visibleCount]);
@@ -150,7 +153,7 @@ function LazySubscriptionGrid({ t, subscriptions, onEdit, onArchive, onDeletePer
   return (
     <div className="grid gap-3.5 lg:grid-cols-2">
       {visibleSubscriptions.map((subscription) => (
-        <SubscriptionCard key={subscription.id} t={t} sub={subscription} onEdit={onEdit} onArchive={onArchive} onDeletePermanent={onDeletePermanent} />
+        <SubscriptionCard key={subscription.id} t={t} language={language} currency={currency} sub={subscription} manageMode={manageMode} onEdit={onEdit} onArchive={onArchive} onDeletePermanent={onDeletePermanent} />
       ))}
       {hasMore && (
         <div ref={sentinelRef} className="col-span-full">
@@ -161,9 +164,12 @@ function LazySubscriptionGrid({ t, subscriptions, onEdit, onArchive, onDeletePer
   );
 }
 
-export function SubscriptionsPage({ t, language, subscriptions, categories, loading, error, load, notify, modalState, setModalState }) {
+export function SubscriptionsPage({ t, language, currency = "EUR", subscriptions, categories, loading, error, load, notify, modalState, setModalState }) {
   const [filters, setFilters] = useState({ search: "", status: "" });
   const [appliedQuery, setAppliedQuery] = useState("");
+  const [manageMode, setManageMode] = useState(false);
+
+  useEffect(() => () => load(""), []);
 
   const applyFilters = (nextFilters = filters, { force = false } = {}) => {
     const nextQuery = buildFilterQuery(nextFilters);
@@ -221,16 +227,22 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#F8FAFC] pb-28 text-slate-900 lg:min-h-0 lg:bg-transparent lg:pb-8">
+    <div className="mobile-page min-h-[100svh] overflow-x-hidden bg-[#F8FAFC] text-slate-900 lg:min-h-0 lg:bg-transparent lg:pb-8">
       <main className="flex h-full w-full flex-col">
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-5 pb-4 pt-12 shadow-sm lg:static lg:rounded-[24px] lg:px-6 lg:pt-5">
+        <header className="mobile-top-safe sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-100 bg-white px-5 pb-4 shadow-sm lg:static lg:rounded-[24px] lg:px-6 lg:pt-5">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-bold tracking-tight text-slate-900">{t.subscriptions}</h1>
             <p className="mt-0.5 truncate text-xs font-medium text-slate-500">{t.manageRecurringCosts}</p>
           </div>
-          <button aria-label={t.addSubscription} onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
-            <i className="ph-bold ph-plus text-lg" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button type="button" aria-pressed={manageMode} onClick={() => setManageMode((enabled) => !enabled)} className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-black transition-all active:scale-95 ${manageMode ? "bg-slate-900 text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
+              <i className={`ph ${manageMode ? "ph-check" : "ph-pencil-simple"} text-base`} />
+              <span className="hidden min-[360px]:inline">{manageMode ? t.doneManagingSubscriptions : t.manageSubscriptions}</span>
+            </button>
+            <button aria-label={t.addSubscription} onClick={() => setModalState({ open: true, subscription: null })} className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#7B42FF] text-white shadow-md transition-colors hover:bg-[#6B32EF] active:scale-95">
+              <i className="ph-bold ph-plus text-lg" />
+            </button>
+          </div>
         </header>
 
         <section className="border-b border-slate-100 bg-white px-5 py-4 lg:mt-4 lg:rounded-[24px] lg:border lg:border-slate-100">
@@ -263,6 +275,8 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
             ))}
           </div>
 
+          {manageMode && <p className="mt-3 rounded-xl bg-[#F4F0FF] px-3 py-2 text-xs font-bold leading-relaxed text-[#7047EB]">{t.manageSubscriptionsHelp}</p>}
+
           {error && subscriptions.length > 0 && <div className="mt-3"><StatePanel title={t.apiErrorTitle} message={error || t.apiErrorMessage} tone="error" icon="ph-warning-circle" /></div>}
         </section>
 
@@ -276,7 +290,10 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
           ) : (
             <LazySubscriptionGrid
               t={t}
+              language={language}
+              currency={currency}
               subscriptions={subscriptions}
+              manageMode={manageMode}
               onEdit={(sub) => setModalState({ open: true, subscription: sub })}
               onArchive={archive}
               onDeletePermanent={deletePermanent}
@@ -290,6 +307,7 @@ export function SubscriptionsPage({ t, language, subscriptions, categories, load
           <SubscriptionModal
             t={t}
             language={language}
+            currency={currency}
             subscription={modalState.subscription}
             categories={categories}
             onClose={() => setModalState({ open: false, subscription: null })}

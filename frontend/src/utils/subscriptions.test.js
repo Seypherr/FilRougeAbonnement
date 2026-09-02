@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { getRenewalAlerts, getSubscriptionStats } from "./subscriptions.js";
+import { formatMoney, getRenewalAlerts, getSubscriptionStats, parseCalendarDate } from "./subscriptions.js";
+
+describe("international subscription helpers", () => {
+  it("formats values with the account currency and preserves date-only renewals", () => {
+    expect(formatMoney(12.5, "USD", "en-US")).toBe("$12.50");
+    const date = parseCalendarDate("2026-09-02T00:00:00.000Z");
+    expect([date.getFullYear(), date.getMonth() + 1, date.getDate()]).toEqual([2026, 9, 2]);
+  });
+});
 
 describe("getSubscriptionStats", () => {
   it("calculates analytics from active subscriptions only", () => {

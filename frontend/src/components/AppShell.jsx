@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart3, CreditCard, Grid2X2, Home, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
+import { BarChart3, Grid2X2, Home, List, LogOut, PieChart, Plus, Shield, UserRound } from "lucide-react";
 import { Toast } from "./Toast.jsx";
 
 const navIconMap = {
@@ -36,9 +36,7 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
       <aside className="hidden min-h-[calc(100vh-32px)] rounded-l-[32px] border-r border-slate-100 bg-white p-5 xl:min-h-[calc(100vh-48px)] xl:p-8 lg:flex lg:flex-col">
         <div>
           <div className="mb-8 flex min-w-0 items-center gap-3 xl:mb-10">
-            <div className="grid size-12 place-items-center rounded-2xl bg-[#7B42FF] text-white shadow-[0_8px_24px_-8px_rgba(123,66,255,0.55)]">
-              <CreditCard size={24} />
-            </div>
+            <img src="/favicon.png" alt={`${t.appName} logo`} className="size-12 shrink-0 object-contain" />
             <div>
               <p className="truncate text-lg font-black">{t.appName}</p>
             </div>
@@ -67,10 +65,10 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
             type="button"
             onClick={onAddSubscription}
             aria-label={t.newSubscription}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.98]"
+            className="flex min-w-0 w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-3 py-3.5 text-sm font-bold text-white transition hover:bg-slate-800 active:scale-[0.98] xl:px-4"
           >
-            <Plus size={18} />
-            {t.newSubscription}
+            <Plus className="shrink-0" size={18} />
+            <span className="truncate">{t.newSubscription}</span>
           </button>
           <button
             type="button"
@@ -99,15 +97,15 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
         </div>
       </aside>
 
-      <section className="min-w-0 pb-24 lg:min-h-[calc(100vh-32px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0 xl:min-h-[calc(100vh-48px)]">
-        <div className={`mx-auto ${tab === "profile" ? "max-w-none" : "max-w-7xl"} lg:h-[calc(100vh-32px)] lg:overflow-y-auto lg:p-5 xl:h-[calc(100vh-48px)] xl:p-8`}>
+      <section className="min-w-0 pb-[calc(env(safe-area-inset-bottom)+6.5rem)] lg:min-h-[calc(100vh-32px)] lg:overflow-hidden lg:rounded-r-[32px] lg:bg-[#F7F8FA] lg:pb-0 xl:min-h-[calc(100vh-48px)]">
+        <div data-app-scroll-container className={`mx-auto ${tab === "profile" ? "max-w-none" : "max-w-7xl"} lg:h-[calc(100vh-32px)] lg:overflow-y-auto lg:p-5 xl:h-[calc(100vh-48px)] xl:p-8`}>
           <div key={tab} className="page-transition">
             {children}
           </div>
         </div>
       </section>
 
-      <nav className="fixed bottom-6 left-0 z-30 w-full px-6 pointer-events-none lg:hidden">
+      <nav className="pointer-events-none fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-0 z-30 w-full px-4 sm:px-6 lg:hidden">
         <div className="flex items-center justify-between rounded-[32px] border border-slate-100/60 bg-white/95 p-2 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.08)] backdrop-blur-xl pointer-events-auto">
         {mobileItems.map(([id, Icon], index) => {
           const active = tab === id;

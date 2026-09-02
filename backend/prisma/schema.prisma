@@ -24,6 +24,22 @@ enum SubscriptionStatus {
   ARCHIVED
 }
 
+enum AccessPlan {
+  FREE
+  BETA
+  PREMIUM
+}
+
+enum ReminderChannel {
+  EMAIL
+}
+
+enum ReminderDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model User {
   id            String         @id @default(uuid())
   name          String
@@ -35,13 +51,39 @@ model User {
   emailVerificationTokenExpiresAt DateTime? @map("email_verification_token_expires_at")
   passwordResetTokenHash String? @map("password_reset_token_hash")
   passwordResetTokenExpiresAt DateTime? @map("password_reset_token_expires_at")
+  preferredLanguage String         @default("fr") @db.VarChar(2) @map("preferred_language")
+  preferredCurrency String         @default("EUR") @db.VarChar(3) @map("preferred_currency")
+  timeZone         String         @default("UTC") @map("time_zone")
+  reminderEmailEnabled Boolean    @default(true) @map("reminder_email_enabled")
+  reminderDaysBefore Int[]        @default([7, 3, 1]) @map("reminder_days_before")
+  accessPlan       AccessPlan     @default(FREE) @map("access_plan")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at")
   role          Role           @default(USER)
   isActive      Boolean        @default(true) @map("is_active")
   subscriptions Subscription[]
+  reminderDeliveries ReminderDelivery[]
+  createdBetaInvites BetaInvite[] @relation("BetaInviteCreator")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
 
   @@map("users")
+}
+
+model BetaInvite {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  tokenHash   String    @unique @map("token_hash")
+  expiresAt   DateTime  @map("expires_at")
+  usedAt      DateTime? @map("used_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdById String    @map("created_by_id")
+  createdBy   User      @relation("BetaInviteCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("beta_invites")
 }
 
 model Category {
@@ -61,17 +103,50 @@ model Subscription {
   description   String?
   price         Decimal            @db.Decimal(10, 2)
   billingCycle  BillingCycle       @map("billing_cycle")
-  renewalDate   DateTime           @map("renewal_date")
+  renewalDate   DateTime           @db.Date @map("renewal_date")
   status        SubscriptionStatus @default(ACTIVE)
   paymentMethod String?            @map("payment_method")
   userId        String             @map("user_id")
   categoryId    String?            @map("category_id")
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   category      Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  reminderDeliveries ReminderDelivery[]
   createdAt     DateTime           @default(now()) @map("created_at")
   updatedAt     DateTime           @updatedAt @map("updated_at")
 
   @@index([userId])
   @@index([categoryId])
   @@map("subscriptions")
+}
+
+model ReminderDelivery {
+  id             String                 @id @default(uuid())
+  userId         String                 @map("user_id")
+  subscriptionId String                 @map("subscription_id")
+  renewalDate    DateTime               @db.Date @map("renewal_date")
+  daysBefore     Int                    @map("days_before")
+  channel        ReminderChannel        @default(EMAIL)
+  status         ReminderDeliveryStatus @default(PENDING)
+  sentAt         DateTime?              @map("sent_at")
+  failureReason  String?                @map("failure_reason")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @updatedAt @map("updated_at")
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription   Subscription           @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, renewalDate, daysBefore, channel])
+  @@index([status, createdAt])
+  @@map("reminder_deliveries")
+}
+
+model DailyProductMetric {
+  id        String   @id @default(uuid())
+  eventDate DateTime @db.Date @map("event_date")
+  eventType String   @db.VarChar(64) @map("event_type")
+  count     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([eventDate, eventType])
+  @@map("daily_product_metrics")
 }

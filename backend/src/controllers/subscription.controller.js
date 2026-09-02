@@ -5,6 +5,7 @@ import {
   getTotalMonthlyAmount,
   serializeSubscription
 } from "../services/subscription.service.js";
+import { recordMetric } from "../services/metrics.service.js";
 
 const subscriptionInclude = {
   category: true,
@@ -12,7 +13,8 @@ const subscriptionInclude = {
     select: {
       id: true,
       name: true,
-      email: true
+      email: true,
+      preferredCurrency: true
     }
   }
 };
@@ -70,6 +72,8 @@ export const createSubscription = asyncHandler(async (req, res) => {
     },
     include: { category: true }
   });
+
+  await recordMetric("SUBSCRIPTION_CREATED");
 
   res.status(201).json({ subscription: serializeSubscription(subscription) });
 });

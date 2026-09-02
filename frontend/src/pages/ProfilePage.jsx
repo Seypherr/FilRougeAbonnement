@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { UserAvatar } from "../components/UserAvatar.jsx";
 import { SUPPORTED_LANGUAGES } from "../i18n/dictionaries.js";
 import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
+import { getBrowserTimeZone, getCurrencyLabel, SUPPORTED_CURRENCIES } from "../utils/international.js";
 
 function isValidOptionalAvatarValue(value) {
   if (!value.trim()) return true;
@@ -215,22 +216,25 @@ function formatPlanDate(value) {
   return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-export function ProfilePage({ t, user, language, setLanguage, forgotPassword, updateProfile }) {
+export function ProfilePage({ t, user, language, setLanguage, forgotPassword, updateProfile, currency = "EUR", exportData, deleteAccount, onOpenAdmin }) {
   const [profileError, setProfileError] = useState("");
   const [supportMessage, setSupportMessage] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingReminder, setSavingReminder] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [avatarModalOpen, setAvatarModalOpen] = useState(false);
   const [pendingProfileSave, setPendingProfileSave] = useState(null);
   const [supportModalOpen, setSupportModalOpen] = useState(false);
   const [forgotPasswordConfirmationOpen, setForgotPasswordConfirmationOpen] = useState(false);
-  const notificationsStorageKey = `frovely:push-notifications:${user.id ?? user.email}`;
-  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(() => window.localStorage.getItem(notificationsStorageKey) === "enabled");
   const [form, setForm] = useState({
     name: user.name ?? "",
     email: user.email ?? "",
-    avatarUrl: user.avatarUrl ?? ""
+    avatarUrl: user.avatarUrl ?? "",
+    preferredCurrency: user.preferredCurrency ?? currency,
+    timeZone: user.timeZone ?? getBrowserTimeZone(),
+    reminderEmailEnabled: user.reminderEmailEnabled ?? true,
+    reminderDaysBefore: user.reminderDaysBefore ?? [7, 3, 1]
   });
   const previewUser = {
     ...user,
@@ -247,16 +251,19 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
   const appPlanStatus = getPlanValue(appPlan, ["status"], appPlan ? t.active : t.disabled);
   const appPlanNextPayment = getPlanValue(appPlan, ["nextPaymentDate", "nextBillingDate", "renewalDate", "currentPeriodEnd"]);
   const appPlanStartedAt = getPlanValue(appPlan, ["startedAt", "createdAt", "startDate"]);
-
-  useEffect(() => {
-    setPushNotificationsEnabled(window.localStorage.getItem(notificationsStorageKey) === "enabled");
-  }, [notificationsStorageKey]);
+  const emailRemindersLabel = t.emailReminders ?? "Email reminders";
+  const timeZoneLabel = t.timeZone ?? "Time zone";
+  const reminderDaysLabel = t.reminderDays ?? "Reminder days";
 
   const resetDraft = () => {
     setForm({
       name: user.name ?? "",
       email: user.email ?? "",
-      avatarUrl: user.avatarUrl ?? ""
+      avatarUrl: user.avatarUrl ?? "",
+      preferredCurrency: user.preferredCurrency ?? currency,
+      timeZone: user.timeZone ?? getBrowserTimeZone(),
+      reminderEmailEnabled: user.reminderEmailEnabled ?? true,
+      reminderDaysBefore: user.reminderDaysBefore ?? [7, 3, 1]
     });
     setProfileError("");
     setSaved(false);
@@ -267,9 +274,13 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
     setForm({
       name: user.name ?? "",
       email: user.email ?? "",
-      avatarUrl: user.avatarUrl ?? ""
+      avatarUrl: user.avatarUrl ?? "",
+      preferredCurrency: user.preferredCurrency ?? currency,
+      timeZone: user.timeZone ?? getBrowserTimeZone(),
+      reminderEmailEnabled: user.reminderEmailEnabled ?? true,
+      reminderDaysBefore: user.reminderDaysBefore ?? [7, 3, 1]
     });
-  }, [user.name, user.email, user.avatarUrl]);
+  }, [user.name, user.email, user.avatarUrl, user.preferredCurrency, user.timeZone, user.reminderEmailEnabled, user.reminderDaysBefore, currency]);
 
   const change = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -302,15 +313,26 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
 
     try {
       setSaving(true);
-      await updateProfile({
+      const profilePayload = {
         name: nextForm.name.trim(),
         email: nextForm.email.trim().toLowerCase(),
         avatarUrl: nextForm.avatarUrl.trim() || null
-      });
+      };
+      if (user.preferredCurrency && nextForm.preferredCurrency !== user.preferredCurrency) {
+        profilePayload.preferredCurrency = nextForm.preferredCurrency;
+      }
+      if (user.timeZone && nextForm.timeZone !== user.timeZone) {
+        profilePayload.timeZone = nextForm.timeZone;
+      }
+      await updateProfile(profilePayload);
       setForm({
         name: nextForm.name.trim(),
         email: nextForm.email.trim().toLowerCase(),
-        avatarUrl: nextForm.avatarUrl.trim()
+        avatarUrl: nextForm.avatarUrl.trim(),
+        preferredCurrency: nextForm.preferredCurrency,
+        timeZone: nextForm.timeZone,
+        reminderEmailEnabled: nextForm.reminderEmailEnabled,
+        reminderDaysBefore: nextForm.reminderDaysBefore
       });
       setIsEditing(false);
       setSaved(true);
@@ -366,13 +388,40 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
     setIsEditing(false);
   };
 
-  const togglePushNotifications = () => {
+  const toggleReminderEmails = async () => {
+    const nextEnabled = !form.reminderEmailEnabled;
     setSupportMessage("");
-    setPushNotificationsEnabled((enabled) => {
-      const nextEnabled = !enabled;
-      window.localStorage.setItem(notificationsStorageKey, nextEnabled ? "enabled" : "disabled");
-      return nextEnabled;
-    });
+    try {
+      setSavingReminder(true);
+      await updateProfile({ reminderEmailEnabled: nextEnabled });
+      setForm((current) => ({ ...current, reminderEmailEnabled: nextEnabled }));
+      setSupportMessage(t.profileSaved);
+    } catch (error) {
+      setSupportMessage(error.message || t.apiErrorMessage);
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const toggleReminderDay = async (day) => {
+    const selectedDays = form.reminderDaysBefore.includes(day);
+    const nextDays = selectedDays
+      ? form.reminderDaysBefore.filter((value) => value !== day)
+      : [...form.reminderDaysBefore, day].sort((a, b) => b - a);
+
+    if (!nextDays.length) {
+      setSupportMessage(t.reminderDaysRequired ?? "Choose at least one reminder day.");
+      return;
+    }
+
+    setSupportMessage("");
+    try {
+      await updateProfile({ reminderDaysBefore: nextDays });
+      setForm((current) => ({ ...current, reminderDaysBefore: nextDays }));
+      setSupportMessage(t.profileSaved);
+    } catch (error) {
+      setSupportMessage(error.message || t.apiErrorMessage);
+    }
   };
 
   const requestPasswordReset = async () => {
@@ -386,14 +435,39 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
     }
   };
 
+  const downloadMyData = async () => {
+    try {
+      const data = await exportData?.();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "frovely-data.json";
+      link.click();
+      URL.revokeObjectURL(url);
+      setSupportMessage(t.dataExportReady ?? "Your data export is ready.");
+    } catch (error) {
+      setSupportMessage(error.message || t.apiErrorMessage);
+    }
+  };
+
+  const removeMyAccount = async () => {
+    if (!window.confirm(t.deleteAccountConfirm ?? "Delete your Frovely account and all of its data? This cannot be undone.")) return;
+    try {
+      await deleteAccount?.();
+    } catch (error) {
+      setSupportMessage(error.message || t.apiErrorMessage);
+    }
+  };
+
   const openSupportEmail = () => {
-    window.location.href = `mailto:support@frovely.local?subject=${encodeURIComponent(t.supportSection)}`;
+    window.location.href = `mailto:support@frovely.app?subject=${encodeURIComponent(t.supportSection)}`;
   };
 
   return (
-    <div className="min-h-[100svh] overflow-y-auto bg-[#F8F9FB] px-4 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] pt-5 text-slate-900 sm:px-5 lg:h-full lg:min-h-0 lg:overflow-hidden lg:px-0 lg:pb-0 lg:pt-0">
-      <section className="mx-auto flex min-h-full max-w-xl flex-col justify-center gap-3 lg:grid lg:h-full lg:max-w-none lg:grid-cols-[minmax(230px,0.82fr)_minmax(0,1.7fr)] lg:items-stretch lg:gap-4 xl:grid-cols-[minmax(300px,0.95fr)_minmax(0,1.9fr)] xl:gap-5">
-        <header className="shrink-0 rounded-[28px] border border-slate-100 bg-white p-5 text-left shadow-[0_18px_42px_-32px_rgba(15,23,42,0.35)] lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:overflow-hidden lg:p-5 xl:p-6">
+    <div className="mobile-page min-h-[100svh] overflow-x-hidden bg-[#F8F9FB] px-4 pt-5 text-slate-900 sm:px-5 lg:h-full lg:min-h-0 lg:overflow-hidden lg:px-0 lg:pb-0 lg:pt-0">
+      <section className="mx-auto flex min-h-full min-w-0 max-w-xl flex-col justify-start gap-3 lg:grid lg:h-full lg:max-w-none lg:grid-cols-[minmax(230px,0.82fr)_minmax(0,1.7fr)] lg:items-stretch lg:gap-4 lg:justify-center xl:grid-cols-[minmax(300px,0.95fr)_minmax(0,1.9fr)] xl:gap-5">
+        <header className="shrink-0 rounded-[28px] border border-slate-100 bg-white p-4 text-left shadow-[0_18px_42px_-32px_rgba(15,23,42,0.35)] sm:p-5 lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:overflow-hidden lg:p-5 xl:p-6">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-slate-400">{t.subscriptionDetails}</p>
             {appPlan ? (
@@ -407,7 +481,7 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                 </div>
                 <div className="rounded-[24px] bg-[#F4F0FF] p-4">
                   <p className="text-3xl font-black text-[#7047EB]">
-                    {appPlanPrice !== null ? formatMoney(appPlanPrice) : "-"}
+                    {appPlanPrice !== null ? formatMoney(appPlanPrice, form.preferredCurrency) : "-"}
                     <span className="ml-1 text-sm font-black text-[#7047EB]/60">/ {t[cycleLabels[String(appPlanCycle).toUpperCase()]] ?? appPlanCycle}</span>
                   </p>
                 </div>
@@ -434,13 +508,13 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                 </button>
               </div>
             ) : (
-              <div className="mt-4 grid gap-3.5">
-                <div className="rounded-[24px] bg-[#F4F0FF] p-4 lg:p-3 xl:p-4">
+              <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-3.5">
+                <div className="rounded-[24px] bg-[#F4F0FF] p-3.5 sm:p-4 lg:p-3 xl:p-4">
                   <p className="text-xs font-black uppercase tracking-wide text-[#7047EB]/60">{t.currentPlan}</p>
                   <p className="mt-1.5 text-2xl font-black text-slate-950">{t.freePlan}</p>
-                  <p className="mt-2 text-3xl font-black text-[#7047EB] lg:text-2xl xl:text-3xl">{formatMoney(0)}</p>
+                  <p className="mt-2 text-3xl font-black text-[#7047EB] lg:text-2xl xl:text-3xl">{formatMoney(0, form.preferredCurrency)}</p>
                 </div>
-                <div className="grid gap-2.5 text-sm font-semibold text-slate-500">
+                <div className="hidden gap-2 text-sm font-semibold text-slate-500 sm:grid sm:gap-2.5">
                   <div className="flex items-center justify-between gap-3">
                     <span>{t.paymentStatus}</span>
                     <span className="text-right font-black text-slate-900">{t.noAppPlanTitle}</span>
@@ -454,14 +528,14 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                     <span className="text-right font-black text-slate-900">{t.noCancellationNeeded}</span>
                   </div>
                 </div>
-                <p className="rounded-2xl bg-slate-50 p-4 text-sm font-semibold leading-relaxed text-slate-500 lg:p-3 xl:p-4">{t.noAppPlanHelp}</p>
+                <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold leading-relaxed text-slate-500 sm:p-4 lg:p-3 xl:p-4">{t.noAppPlanHelp}</p>
               </div>
             )}
           </div>
         </header>
 
         <section className="grid min-h-0 shrink gap-3 lg:h-full lg:grid-rows-[minmax(0,0.9fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:gap-4 xl:gap-5">
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
+          <div className="rounded-[22px] border border-slate-100 bg-white p-3 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] sm:p-3.5 lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
             {isEditing ? (
               <form className="grid gap-3 xl:grid-cols-2 xl:gap-4" onSubmit={handleProfileSubmit} noValidate>
                 <div>
@@ -471,6 +545,26 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
                     aria-invalid={Boolean(profileError === t.nameRequired)}
                     value={form.name}
                     onChange={(event) => change("name", event.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.currencyQuestion}</label>
+                  <select
+                    aria-label={t.currencyQuestion}
+                    value={form.preferredCurrency}
+                    onChange={(event) => change("preferredCurrency", event.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
+                  >
+                    {SUPPORTED_CURRENCIES.map((option) => <option key={option} value={option}>{option} - {getCurrencyLabel(option, language)}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{timeZoneLabel}</label>
+                  <input
+                    aria-label={timeZoneLabel}
+                    value={form.timeZone}
+                    onChange={(event) => change("timeZone", event.target.value)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
                   />
                 </div>
@@ -507,11 +601,19 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
               </form>
             ) : (
               <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</p>
                   <p className="mt-1 break-words text-sm font-black text-slate-900 lg:text-lg">{form.name || "-"}</p>
                 </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.currencyQuestion}</p>
+                  <p className="mt-1 text-sm font-black text-slate-900 lg:text-lg">{form.preferredCurrency}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{timeZoneLabel}</p>
+                  <p className="mt-1 break-all text-sm font-black text-slate-900 lg:text-lg">{form.timeZone}</p>
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
                   <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</p>
                   <p className="mt-1 break-all text-sm font-black text-slate-900 lg:text-lg">{form.email || "-"}</p>
                 </div>
@@ -529,12 +631,12 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
 
           <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
             <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.preferences}</p>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm font-black text-slate-900">{t.language}</p>
                 <p className="mt-0.5 text-xs font-semibold text-slate-500">{t.interfaceLanguage}</p>
               </div>
-              <div className="relative w-36 shrink-0">
+              <div className="relative ml-auto w-24 shrink-0 basis-full sm:w-36 sm:basis-auto">
                 <i className="ph ph-translate pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base text-[#7047EB]" />
                 <select
                   aria-label={t.language}
@@ -554,6 +656,19 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
           <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
             <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.supportSection}</p>
             <div className="grid gap-2.5 xl:grid-cols-3 xl:gap-3">
+              {onOpenAdmin && (
+                <button
+                  type="button"
+                  onClick={onOpenAdmin}
+                  className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-[#7047EB]/15 bg-[#F4F0FF] px-3.5 py-3 text-left transition hover:border-[#7047EB]/30 hover:bg-white"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-[#7047EB]">{t.adminPanel}</span>
+                    <span className="block truncate text-xs font-semibold text-[#7047EB]/70">{t.manageUsers}</span>
+                  </span>
+                  <i className="ph-bold ph-shield-check shrink-0 text-lg text-[#7047EB]" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSupportModalOpen(true)}
@@ -579,17 +694,59 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
               <button
                 type="button"
                 role="switch"
-                aria-checked={pushNotificationsEnabled}
-                onClick={togglePushNotifications}
+                aria-checked={form.reminderEmailEnabled}
+                onClick={toggleReminderEmails}
+                disabled={savingReminder}
+                className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF] disabled:cursor-wait ${savingReminder ? "bg-slate-200 text-slate-500 shadow-inner" : ""}`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-slate-900">{emailRemindersLabel}</span>
+                  <span className="block truncate text-xs font-semibold text-slate-500">{form.reminderEmailEnabled ? t.enabled : t.disabled}</span>
+                </span>
+                <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${savingReminder ? "bg-slate-400" : form.reminderEmailEnabled ? "bg-[#7047EB]" : "bg-slate-300"}`}>
+                  <span className={`absolute top-1 grid size-5 place-items-center rounded-full bg-white shadow-sm transition ${form.reminderEmailEnabled ? "left-6" : "left-1"}`} />
+                </span>
+              </button>
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 xl:col-span-3">
+                <p className="text-sm font-black text-slate-900">{reminderDaysLabel}</p>
+                <div className="mt-2 flex gap-2" role="group" aria-label={reminderDaysLabel}>
+                  {[7, 3, 1].map((day) => {
+                    const isSelected = form.reminderDaysBefore.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => toggleReminderDay(day)}
+                        className={`h-9 min-w-12 rounded-xl px-3 text-sm font-black transition ${isSelected ? "bg-[#7047EB] text-white shadow-[0_8px_18px_-12px_rgba(112,71,235,0.9)]" : "border border-slate-200 bg-white text-slate-600 hover:border-[#7047EB]/30"}`}
+                      >
+                        {day}d
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={downloadMyData}
                 className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
               >
                 <span className="min-w-0">
-                  <span className="block text-sm font-black text-slate-900">{t.pushNotifications}</span>
-                  <span className="block truncate text-xs font-semibold text-slate-500">{pushNotificationsEnabled ? t.enabled : t.disabled}</span>
+                  <span className="block text-sm font-black text-slate-900">{t.exportMyData ?? "Export my data"}</span>
+                  <span className="block truncate text-xs font-semibold text-slate-500">{t.exportMyDataHelp ?? "Download your account data."}</span>
                 </span>
-                <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${pushNotificationsEnabled ? "bg-[#7047EB]" : "bg-slate-300"}`}>
-                  <span className={`absolute top-1 grid size-5 place-items-center rounded-full bg-white shadow-sm transition ${pushNotificationsEnabled ? "left-6" : "left-1"}`} />
+                <i className="ph-bold ph-download-simple shrink-0 text-lg text-[#7047EB]" />
+              </button>
+              <button
+                type="button"
+                onClick={removeMyAccount}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-3.5 py-3 text-left transition hover:bg-rose-100"
+              >
+                <span className="min-w-0">
+                  <span className="block text-sm font-black text-rose-700">{t.deleteMyAccount ?? "Delete my account"}</span>
+                  <span className="block truncate text-xs font-semibold text-rose-600">{t.deleteMyAccountHelp ?? "Permanently remove all account data."}</span>
                 </span>
+                <i className="ph-bold ph-trash shrink-0 text-lg text-rose-600" />
               </button>
             </div>
             {supportMessage && <p role="status" className="mt-2.5 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{supportMessage}</p>}

@@ -22,9 +22,16 @@ export function AuthPage({ t, language, setLanguage }) {
     const path = window.location.pathname;
     if (path.includes("reset-password")) return "reset";
     if (path.includes("verify-email")) return "verify";
+    if (new URLSearchParams(window.location.search).has("invite")) return "register";
     return "login";
   });
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
+  const [form, setForm] = useState(() => ({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    inviteToken: new URLSearchParams(window.location.search).get("invite") ?? ""
+  }));
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -85,7 +92,9 @@ export function AuthPage({ t, language, setLanguage }) {
         await register({
           name: form.name,
           email: form.email,
-          password: form.password
+          password: form.password,
+          preferredLanguage: language,
+          ...(form.inviteToken ? { inviteToken: form.inviteToken } : {})
         });
       } else if (mode === "forgot") {
         const data = await forgotPassword({ email: form.email });
@@ -108,8 +117,8 @@ export function AuthPage({ t, language, setLanguage }) {
   };
 
   return (
-    <main className="flex min-h-screen w-full flex-col bg-[#EEF0F4] p-4 text-[#1B1D28]" style={{ fontFamily: "'Poppins', sans-serif" }}>
-      <section className="relative mx-auto flex min-h-[calc(100vh-32px)] w-full max-w-md flex-1 flex-col overflow-hidden rounded-[40px] bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)]">
+    <main className="flex min-h-[100svh] w-full flex-col bg-[#EEF0F4] p-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-[#1B1D28]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+      <section className="relative mx-auto flex min-h-[calc(100svh-32px)] w-full max-w-md flex-1 flex-col overflow-hidden rounded-[32px] bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] sm:rounded-[40px]">
         <header className="flex shrink-0 items-center justify-between p-6 pb-2">
           <div className="flex items-center gap-2.5">
             <div className="flex size-10 items-center justify-center rounded-2xl bg-[#7047EB] text-white shadow-[0_4px_16px_rgba(112,71,235,0.3)]">
@@ -172,6 +181,12 @@ export function AuthPage({ t, language, setLanguage }) {
                   required
                 />
               </div>
+            )}
+
+            {isRegisterMode && form.inviteToken && (
+              <p className="rounded-2xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">
+                {t.betaInviteDetected}
+              </p>
             )}
 
             {mode !== "reset" && mode !== "verify" && <div>
@@ -300,6 +315,11 @@ export function AuthPage({ t, language, setLanguage }) {
               </button>
             )}
           </form>
+          <footer className="mt-6 flex justify-center gap-4 text-xs font-semibold text-slate-500">
+            <a href="/privacy" className="hover:text-[#7047EB]">Privacy</a>
+            <a href="/terms" className="hover:text-[#7047EB]">Terms</a>
+            <a href="/legal" className="hover:text-[#7047EB]">Legal</a>
+          </footer>
         </div>
       </section>
     </main>

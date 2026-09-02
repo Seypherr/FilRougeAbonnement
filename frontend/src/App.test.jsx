@@ -168,7 +168,7 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Masquer le mot de passe" })).toBeInTheDocument();
   });
 
-  it("shows and persists the mobile onboarding carousel before the app", () => {
+  it("shows and persists the mobile onboarding carousel before the app", async () => {
     window.localStorage.removeItem("frovely:onboarding:v1:user-1");
     useAuth.mockReturnValue({
       user,
@@ -190,7 +190,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Voir les échéances à venir" }));
     fireEvent.click(screen.getByRole("button", { name: "Terminer" }));
 
-    expect(window.localStorage.getItem("frovely:onboarding:v1:user-1")).toBe("completed");
+    await waitFor(() => expect(window.localStorage.getItem("frovely:onboarding:v1:user-1")).toBe("completed"));
     expect(screen.getByText("Tableau de bord")).toBeInTheDocument();
   });
 
@@ -221,7 +221,8 @@ describe("App", () => {
       expect(register).toHaveBeenCalledWith({
         name: "New User",
         email: "new@test.local",
-        password: "Password123!"
+        password: "Password123!",
+        preferredLanguage: "fr"
       });
     });
   });
@@ -556,7 +557,7 @@ describe("App", () => {
     expect(screen.getByText("15 juin 2026")).toBeInTheDocument();
   });
 
-  it("suggests known services and fills name, category and average price", async () => {
+  it("suggests known services without assuming a local price", async () => {
     useAuth.mockReturnValue({
       user,
       loading: false,
@@ -574,12 +575,12 @@ describe("App", () => {
 
     expect(screen.getByRole("option", { name: "Choisir Netflix" })).toBeInTheDocument();
     expect(screen.getAllByAltText("Netflix logo").length).toBeGreaterThan(0);
-    expect(screen.getByText("Streaming · 7,99 € / 14,99 €")).toBeInTheDocument();
+    expect(screen.getAllByText(/Streaming/).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("option", { name: "Choisir Netflix" }));
 
     expect(nameInput).toHaveValue("Netflix");
-    expect(screen.getByLabelText("Prix")).toHaveValue("7.99");
+    expect(screen.getByLabelText("Prix")).toHaveValue("");
     expect(screen.getByLabelText("Catégorie")).toHaveValue("cat-1");
   });
 
@@ -651,7 +652,8 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Edit Netflix" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier l'abonnement Netflix" }));
 
     expect(screen.getByRole("heading", { name: "Modifier l'abonnement" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nom")).toHaveValue("Netflix");
@@ -671,7 +673,8 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Edit Netflix" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier l'abonnement Netflix" }));
 
     expect(screen.queryByRole("button", { name: "Mois suivant" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Renouvellement/i }));
@@ -697,7 +700,8 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Edit Netflix" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier l'abonnement Netflix" }));
 
     fireEvent.click(screen.getByRole("button", { name: /Renouvellement/i }));
     expect(screen.getByRole("button", { name: "Mois suivant" })).toBeInTheDocument();
@@ -723,9 +727,12 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getByText("Archived Cloud")).toBeInTheDocument());
-    expect(screen.queryByRole("button", { name: "Archive Archived Cloud" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Archiver l'abonnement Archived Cloud" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Supprimer l'abonnement Archived Cloud" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    expect(screen.queryByRole("button", { name: "Archiver l'abonnement Archived Cloud" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Supprimer l'abonnement Archived Cloud" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Archive Netflix" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archiver l'abonnement Netflix" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Supprimer l'abonnement Netflix" })).toBeInTheDocument();
   });
 
@@ -756,6 +763,7 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getByText("Netflix")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
     fireEvent.click(screen.getByRole("button", { name: "Supprimer l'abonnement Netflix" }));
 
     await waitFor(() => expect(window.confirm).toHaveBeenCalledWith("Supprimer définitivement cet abonnement ? Cette action est irréversible."));
@@ -775,6 +783,7 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getByText("Archived Cloud")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
     fireEvent.click(screen.getByRole("button", { name: "Supprimer l'abonnement Archived Cloud" }));
 
     await waitFor(() => expect(window.confirm).toHaveBeenCalledWith("Supprimer définitivement cet abonnement ? Cette action est irréversible."));
@@ -796,7 +805,7 @@ describe("App", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Statistiques" })[0]);
 
-    await waitFor(() => expect(screen.getAllByText("Total dépensé").length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText("Total dépensé").length).toBeGreaterThan(0), { timeout: 3000 });
     expect(screen.queryByRole("heading", { name: "Ajouter un abonnement" })).not.toBeInTheDocument();
   });
 
@@ -830,7 +839,8 @@ describe("App", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /Abonnements/i })[0]);
 
     await waitFor(() => expect(screen.getAllByText("Netflix").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Edit Netflix" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    fireEvent.click(screen.getByRole("button", { name: "Modifier l'abonnement Netflix" }));
     expect(screen.getByRole("heading", { name: "Modifier l'abonnement" })).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Statistiques" })[0]);
@@ -913,7 +923,8 @@ describe("App", () => {
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/subscriptions?status=ACTIVE"));
 
     apiRequest.mockClear();
-    const archiveButton = await screen.findByRole("button", { name: "Archive Netflix" });
+    fireEvent.click(screen.getByRole("button", { name: "Modifier" }));
+    const archiveButton = await screen.findByRole("button", { name: "Archiver l'abonnement Netflix" });
     fireEvent.click(archiveButton);
 
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith("/subscriptions/sub-1", expect.objectContaining({ method: "DELETE" })));
@@ -1002,7 +1013,7 @@ describe("App", () => {
             price: 9.99,
             billingCycle: "WEEKLY",
             status: "INACTIVE",
-            renewalDate: "2099-06-15T00:00:00.000Z",
+            renewalDate: "2099-06-15",
             categoryId: "cat-1",
             paymentMethod: "Visa 4242",
             description: "Shared account"
@@ -1035,23 +1046,25 @@ describe("App", () => {
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
   });
 
-  it("saves push notification preference from the profile page", async () => {
+  it("saves email reminder preference from the profile page", async () => {
+    const updateProfile = vi.fn().mockResolvedValue({});
     useAuth.mockReturnValue({
-      user,
+      user: { ...user, reminderEmailEnabled: false },
       loading: false,
-      logout: vi.fn()
+      logout: vi.fn(),
+      updateProfile
     });
 
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    const pushSwitch = await screen.findByRole("switch", { name: /Notifications push/i });
-    expect(pushSwitch).toHaveAttribute("aria-checked", "false");
+    const emailSwitch = await screen.findByRole("switch", { name: /Rappels par email/i });
+    expect(emailSwitch).toHaveAttribute("aria-checked", "false");
 
-    fireEvent.click(pushSwitch);
+    fireEvent.click(emailSwitch);
 
-    expect(pushSwitch).toHaveAttribute("aria-checked", "true");
-    expect(window.localStorage.getItem("frovely:push-notifications:user-1")).toBe("enabled");
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ reminderEmailEnabled: true }));
+    expect(emailSwitch).toHaveAttribute("aria-checked", "true");
   });
 
   it("requests a password reset from the profile assistance section", async () => {

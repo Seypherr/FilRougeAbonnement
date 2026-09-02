@@ -12,8 +12,41 @@ body {
 html,
 body,
 #root {
+  min-height: 100%;
   max-width: 100%;
   overflow-x: hidden;
+}
+
+html {
+  background: #f8f9fb;
+  scroll-behavior: smooth;
+}
+
+/* iOS zooms into form fields below 16px. Keep mobile forms at the natural 100% scale. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  button,
+  [role="button"],
+  select,
+  input,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 1023px) {
+  .mobile-page {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 7.5rem);
+  }
+
+  .mobile-top-safe {
+    padding-top: max(2.5rem, calc(env(safe-area-inset-top) + 1.5rem));
+  }
 }
 
 ::-webkit-scrollbar {

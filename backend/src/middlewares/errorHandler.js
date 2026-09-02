@@ -1,6 +1,5 @@
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
-import { env } from "../config/env.js";
 import { logger } from "../utils/logger.js";
 
 export const notFound = (req, _res, next) => {
@@ -11,12 +10,13 @@ export const notFound = (req, _res, next) => {
 
 export const errorHandler = (error, _req, res, _next) => {
   let statusCode = error.statusCode ?? 500;
-  let message = error.message ?? "Internal server error";
+  let message = error.message ?? "Une erreur technique est survenue.";
   let details = error.details;
+  const rawMessage = error.message ?? "Unknown error";
 
   if (error instanceof ZodError) {
     statusCode = 400;
-    message = "Validation failed";
+    message = "Certaines informations sont invalides. Verifiez les champs puis reessayez.";
     details = error.flatten();
   }
 
@@ -26,23 +26,29 @@ export const errorHandler = (error, _req, res, _next) => {
   ) {
     if (error.code === "P2002") {
       statusCode = 409;
-      message = "A record with this value already exists";
+      message = "Cette information est deja utilisee.";
+      details = undefined;
     }
   }
 
-  if (
-    Prisma.PrismaClientInitializationError &&
-    error instanceof Prisma.PrismaClientInitializationError
-  ) {
+  const isPrismaConfigurationError =
+    (Prisma.PrismaClientInitializationError &&
+      error instanceof Prisma.PrismaClientInitializationError) ||
+    (Prisma.PrismaClientValidationError &&
+      error instanceof Prisma.PrismaClientValidationError) ||
+    /invalid `prisma\.|error validating datasource|prisma:\/\/|prisma\+postgres:\/\//i.test(rawMessage);
+
+  if (isPrismaConfigurationError) {
     statusCode = 503;
-    message = "Service temporairement indisponible. Vérifiez que la base de données est démarrée.";
+    message = "Le service est temporairement indisponible. Reessayez dans quelques instants.";
+    details = undefined;
+  } else if (!error.statusCode && statusCode >= 500) {
+    message = "Une erreur technique est survenue. Reessayez dans quelques instants.";
+    details = undefined;
   }
 
-  logger.error(message, { statusCode, details });
+  // Keep the original diagnostic on the server, never expose it to the user.
+  logger.error("API request failed", { statusCode, message: rawMessage, details });
 
-  res.status(statusCode).json({
-    message,
-    details,
-    stack: env.NODE_ENV === "production" ? undefined : error.stack
-  });
+  res.status(statusCode).json({ message, ...(details ? { details } : {}) });
 };

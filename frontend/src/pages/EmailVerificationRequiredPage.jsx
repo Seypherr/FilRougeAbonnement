@@ -1,9 +1,10 @@
 import { useState } from "react";
 
-export function EmailVerificationRequiredPage({ t, user, resendVerification, logout }) {
+export function EmailVerificationRequiredPage({ t, user, resendVerification, logout, initialDelivery }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [verificationUrl, setVerificationUrl] = useState("");
+  const [verificationUrl, setVerificationUrl] = useState(initialDelivery?.verificationUrl ?? "");
+  const [emailDeliveryConfigured, setEmailDeliveryConfigured] = useState(initialDelivery?.emailDeliveryConfigured !== false);
   const [loading, setLoading] = useState(false);
 
   const resend = async () => {
@@ -14,6 +15,7 @@ export function EmailVerificationRequiredPage({ t, user, resendVerification, log
       setLoading(true);
       const data = await resendVerification();
       setVerificationUrl(data?.verificationUrl ?? "");
+      setEmailDeliveryConfigured(data?.emailDeliveryConfigured !== false);
       setMessage(t.verificationEmailSent);
     } catch (err) {
       setError(err.message || t.apiErrorMessage);
@@ -23,7 +25,7 @@ export function EmailVerificationRequiredPage({ t, user, resendVerification, log
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#EEF0F4] p-4 text-slate-950">
+    <main className="grid min-h-[100svh] place-items-center bg-[#EEF0F4] p-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] text-slate-950">
       <section className="w-full max-w-md rounded-[32px] bg-white p-6 text-center shadow-[0_20px_60px_-24px_rgba(15,23,42,0.35)]">
         <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-[#F4F1FF] text-[#7047EB]">
           <i className="ph-fill ph-envelope-simple text-2xl" />
@@ -32,6 +34,11 @@ export function EmailVerificationRequiredPage({ t, user, resendVerification, log
         <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-500">
           {t.verifyYourEmailHelp.replace("{email}", user.email)}
         </p>
+        {!emailDeliveryConfigured && (
+          <p role="status" className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold leading-relaxed text-amber-800">
+            {t.emailDeliveryUnavailable}
+          </p>
+        )}
         {message && <p className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</p>}
         {verificationUrl && (
           <div className="mt-4 grid gap-2 rounded-2xl border border-[#7047EB]/15 bg-[#F4F1FF] p-3">

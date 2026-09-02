@@ -17,6 +17,36 @@ const strictEmailSchema = z
   });
 
 const publicTokenSchema = z.string().trim().min(32).max(256);
+const preferredLanguageSchema = z.enum(["fr", "en", "es"]);
+
+const currencySchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{3}$/, "Currency must use an ISO 4217 code")
+  .refine((value) => {
+    try {
+      new Intl.NumberFormat("en", { style: "currency", currency: value });
+      return true;
+    } catch {
+      return false;
+    }
+  }, { message: "Unsupported currency" });
+
+const timeZoneSchema = z.string().trim().min(1).max(100).refine((value) => {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}, { message: "Invalid IANA time zone" });
+
+const reminderDaysSchema = z
+  .array(z.coerce.number().int().min(0).max(30))
+  .min(1)
+  .max(5)
+  .refine((days) => new Set(days).size === days.length, { message: "Reminder days must be unique" });
 
 const avatarValueSchema = z
   .string()
@@ -37,7 +67,9 @@ export const registerSchema = z.object({
   body: z.object({
     name: z.string().trim().min(2).max(80),
     email: strictEmailSchema,
-    password: z.string().min(8).max(120)
+    password: z.string().min(8).max(120),
+    preferredLanguage: preferredLanguageSchema.default("fr"),
+    inviteToken: publicTokenSchema.optional()
   })
 });
 
@@ -75,10 +107,25 @@ export const profileUpdateSchema = z.object({
       avatarUrl: z
         .union([avatarValueSchema, z.literal("")])
         .nullable()
-        .optional()
+        .optional(),
+      preferredLanguage: preferredLanguageSchema.optional(),
+      preferredCurrency: currencySchema.optional(),
+      timeZone: timeZoneSchema.optional(),
+      reminderEmailEnabled: z.boolean().optional(),
+      reminderDaysBefore: reminderDaysSchema.optional()
     })
     .strict()
     .refine((body) => Object.keys(body).length > 0, {
       message: "At least one profile field is required"
     })
+});
+
+export const onboardingCompleteSchema = z.object({
+  body: z.object({
+    preferredCurrency: currencySchema,
+    preferredLanguage: preferredLanguageSchema.default("fr"),
+    timeZone: timeZoneSchema,
+    reminderEmailEnabled: z.boolean().default(true),
+    reminderDaysBefore: reminderDaysSchema.default([7, 3, 1])
+  }).strict()
 });

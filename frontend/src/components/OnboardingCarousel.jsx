@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
+import { getBrowserCurrency, getBrowserTimeZone, getCurrencyLabel, SUPPORTED_CURRENCIES } from "../utils/international.js";
 
-export function OnboardingCarousel({ t, onComplete }) {
+export function OnboardingCarousel({ t, language, onComplete }) {
   const questions = t.onboardingQuestions;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [preferredCurrency, setPreferredCurrency] = useState(getBrowserCurrency);
+  const [submitting, setSubmitting] = useState(false);
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentQuestion.id] ?? "";
   const isLastQuestion = currentIndex === questions.length - 1;
@@ -23,13 +26,25 @@ export function OnboardingCarousel({ t, onComplete }) {
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: answer }));
   };
 
-  const continueOnboarding = () => {
+  const continueOnboarding = async () => {
     if (!selectedAnswer) {
       return;
     }
 
     if (isLastQuestion) {
-      onComplete(completionPayload);
+      setSubmitting(true);
+      try {
+        await onComplete({
+          ...completionPayload,
+          preferredLanguage: language,
+          preferredCurrency,
+          timeZone: getBrowserTimeZone(),
+          reminderEmailEnabled: true,
+          reminderDaysBefore: [7, 3, 1]
+        });
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -61,6 +76,20 @@ export function OnboardingCarousel({ t, onComplete }) {
               {currentQuestion.question}
             </h1>
 
+            {currentIndex === 0 && (
+              <label className="mt-5 block text-sm font-bold text-slate-700">
+                {t.currencyQuestion}
+                <select
+                  aria-label={t.currencyQuestion}
+                  value={preferredCurrency}
+                  onChange={(event) => setPreferredCurrency(event.target.value)}
+                  className="mt-2 h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-900 outline-none focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF]"
+                >
+                  {SUPPORTED_CURRENCIES.map((currency) => <option key={currency} value={currency}>{currency} - {getCurrencyLabel(currency, language)}</option>)}
+                </select>
+              </label>
+            )}
+
             <div className="mt-7 grid gap-3">
               {currentQuestion.options.map((option) => {
                 const selected = option === selectedAnswer;
@@ -86,11 +115,11 @@ export function OnboardingCarousel({ t, onComplete }) {
 
         <button
           type="button"
-          disabled={!selectedAnswer}
+          disabled={!selectedAnswer || submitting}
           onClick={continueOnboarding}
           className="mb-[max(0px,env(safe-area-inset-bottom))] flex min-h-14 w-full shrink-0 items-center justify-center gap-2 rounded-full bg-[#7047EB] px-5 text-base font-black text-white shadow-[0_18px_38px_-24px_rgba(112,71,235,0.95)] transition-all hover:bg-[#5E35D9] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#C9CDE0] disabled:shadow-none"
         >
-          {isLastQuestion ? t.onboardingFinish : t.onboardingContinue}
+          {submitting ? t.loading : isLastQuestion ? t.onboardingFinish : t.onboardingContinue}
           <i className={`ph-bold ${isLastQuestion ? "ph-check" : "ph-arrow-right"} text-lg`} />
         </button>
       </section>

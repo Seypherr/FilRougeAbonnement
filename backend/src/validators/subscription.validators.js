@@ -3,17 +3,22 @@ import { z } from "zod";
 const billingCycle = z.enum(["MONTHLY", "ANNUAL", "WEEKLY"]);
 const status = z.enum(["ACTIVE", "INACTIVE", "ARCHIVED"]);
 
-const renewalDate = z.coerce.date().refine((value) => {
-  const selected = new Date(value);
-  selected.setHours(0, 0, 0, 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return selected >= today;
-}, {
-  message: "Renewal date cannot be in the past"
-});
+const renewalDate = z
+  .union([
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    z.coerce.date()
+  ])
+  .transform((value) => {
+    const date = typeof value === "string" ? new Date(`${value}T00:00:00.000Z`) : value;
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  })
+  .refine((value) => {
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    return value.getTime() >= today;
+  }, {
+    message: "Renewal date cannot be in the past"
+  });
 
 export const subscriptionCreateSchema = z.object({
   body: z.object({

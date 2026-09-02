@@ -1,15 +1,8 @@
 # Frovely
 
-Application web bilingue de gestion d'abonnements réalisée avec React, Express, Prisma et PostgreSQL.
+Application web internationale de gestion d'abonnements, conçue pour une bêta publique, avec React, Express, Prisma et PostgreSQL.
 
 Le projet permet à un utilisateur de centraliser ses abonnements, suivre ses dépenses mensuelles et gérer ses services. Un espace administrateur permet de gérer les comptes et de consulter les abonnements de la plateforme.
-
-## Équipe projet
-
-- Louis DELARUE
-- Ethan Porcarro
-
-Projet réalisé dans le cadre du module Technologies Web & Base de données, Bachelor 2 Ynov.
 
 ## Stack technique
 
@@ -37,8 +30,13 @@ Projet réalisé dans le cadre du module Technologies Web & Base de données, Ba
 - Dashboard avec total mensuel, estimation annuelle et prochains renouvellements
 - Page Analytics avec répartition par catégorie et abonnements les plus coûteux
 - Espace Admin: gestion des utilisateurs et consultation globale des abonnements
-- Interface français / anglais
+- Interface français / anglais / espagnol
 - Interface responsive mobile et desktop
+- PWA installable Android et iPhone, sans cache des données privées
+- Devise et fuseau horaire par compte
+- Rappels de renouvellement par email, exécutés par une tâche planifiée idempotente
+- Accès `FREE`, `BETA` et `PREMIUM` préparés côté serveur
+- Export et suppression de compte
 
 ## Ports utilisés
 
@@ -88,14 +86,17 @@ CLIENT_ORIGINS=
 DATABASE_URL=postgresql://subscription_user:subscription_password@localhost:15432/subscription_manager?schema=public
 JWT_SECRET=replace-with-at-least-48-random-characters-generated-by-a-secret-manager
 JWT_EXPIRES_IN=7d
-COOKIE_NAME=subscription_manager_token
+COOKIE_NAME=frovely_session
 COOKIE_SECURE=false
 COOKIE_SAME_SITE=lax
+PUBLIC_REGISTRATION_ENABLED=true
+BETA_INVITE_ONLY=false
+BETA_INVITE_LIMIT=30
 AUTH_RATE_LIMIT_WINDOW_MS=900000
 AUTH_RATE_LIMIT_MAX=100
-ADMIN_EMAIL=admin@subscription.local
+ADMIN_EMAIL=admin@frovely.local
 ADMIN_PASSWORD=Admin123!
-ADMIN_NAME=Admin Subscription
+ADMIN_NAME=Frovely Admin
 ```
 
 Frontend: `frontend/.env`
@@ -104,14 +105,16 @@ Frontend: `frontend/.env`
 VITE_API_URL=http://localhost:4000/api
 ```
 
-## Compte administrateur
+## Comptes de demonstration
 
-Le compte administrateur est créé par le seed Prisma avec les variables du fichier `backend/.env`.
+Le seed Prisma cree un administrateur et un compte demo deja verifie, avec un onboarding termine et douze abonnements de demonstration. Relancer le seed remet uniquement les abonnements du compte demo dans leur etat initial.
 
 Valeurs par défaut en développement:
 
-- Email: `admin@subscription.local`
-- Mot de passe: `Admin123!`
+- Administrateur: `admin@subscription.local` / `Admin123!`
+- Demo: `demo@frovely.app` / `Demo123!`
+
+Les variables `DEMO_EMAIL`, `DEMO_PASSWORD` et `DEMO_NAME` permettent de remplacer le compte demo local. `SEED_DEMO_ACCOUNT=true` l'autorise explicitement en production ; sinon il est toujours ignore lorsque `NODE_ENV=production`.
 
 ## Scripts npm
 
@@ -203,7 +206,7 @@ Les tests couvrent notamment:
 - Les routes login/register sont protégées par un rate-limit.
 - En production, `JWT_SECRET` doit être fort et les cookies doivent être `Secure`.
 
-Limite connue: la protection CSRF complète n'est pas encore implémentée. La documentation de déploiement explique le risque et les mesures à ajouter avant une mise en production grand public.
+La protection CSRF est appliquée aux requêtes d'écriture, avec un cookie dédié et le header `x-csrf-token`.
 
 ## Documentation
 
@@ -214,11 +217,6 @@ Limite connue: la protection CSRF complète n'est pas encore implémentée. La d
 - Déploiement: [docs/deployment.md](docs/deployment.md)
 - Plan de présentation orale: [docs/presentation.md](docs/presentation.md)
 
-## Limites connues
+## Lancement bêta
 
-- Pas de récupération de mot de passe par email.
-- Pas de vraie page notifications.
-- Pas de gestion complète des moyens de paiement.
-- Pas de protection CSRF dédiée pour le moment.
-- Les statistiques sont calculées côté frontend à partir des abonnements chargés.
-- La mise en production nécessite une configuration précise des cookies, CORS et variables d'environnement.
+La checklist de domaine, emails, légalité, Render, tests téléphone et activation future de Stripe est disponible dans [docs/beta-launch.md](docs/beta-launch.md).

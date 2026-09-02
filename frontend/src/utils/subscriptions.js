@@ -29,10 +29,10 @@ export function parsePrice(value) {
   return Number(String(value ?? "").replace(",", ".").replace(/[^\d.-]/g, ""));
 }
 
-export function formatMoney(value) {
-  return new Intl.NumberFormat("fr-FR", {
+export function formatMoney(value, currency = "EUR", locale = "fr-FR") {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency: "EUR",
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
@@ -60,8 +60,15 @@ export function toApiPayload(form) {
     categoryId: form.categoryId || null,
     description: form.description || null,
     paymentMethod: form.paymentMethod || null,
-    renewalDate: new Date(form.renewalDate).toISOString()
+    renewalDate: form.renewalDate
   };
+}
+
+export function parseCalendarDate(value) {
+  const [year, month, day] = String(value ?? "").slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 export function getSubscriptionStats(subscriptions, totalMonthlyAmount) {
@@ -95,7 +102,8 @@ export function getRenewalAlerts(subscriptions, referenceDate = new Date()) {
   return subscriptions
     .filter((item) => item.status === "ACTIVE" && item.renewalDate)
     .map((item) => {
-      const renewal = new Date(item.renewalDate);
+      const renewal = parseCalendarDate(item.renewalDate);
+      if (!renewal) return null;
       renewal.setHours(0, 0, 0, 0);
       const daysUntil = Math.ceil((renewal - today) / 86400000);
       return {
@@ -104,6 +112,6 @@ export function getRenewalAlerts(subscriptions, referenceDate = new Date()) {
         alertWindow: daysUntil <= 3 ? 3 : 7
       };
     })
-    .filter((item) => item.daysUntil >= 0 && item.daysUntil <= 7)
+    .filter((item) => item && item.daysUntil >= 0 && item.daysUntil <= 7)
     .sort((a, b) => a.daysUntil - b.daysUntil);
 }

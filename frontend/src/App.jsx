@@ -8,6 +8,7 @@ import { useSubscriptions } from "./hooks/useSubscriptions.js";
 import { DEFAULT_LANGUAGE, LANGUAGE_STORAGE_KEY, getDictionary, normalizeLanguage } from "./i18n/dictionaries.js";
 import { AuthPage } from "./pages/AuthPage.jsx";
 import { EmailVerificationRequiredPage } from "./pages/EmailVerificationRequiredPage.jsx";
+import { LegalPage } from "./pages/LegalPage.jsx";
 
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx").then((module) => ({ default: module.AdminPage })));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage.jsx").then((module) => ({ default: module.AnalyticsPage })));
@@ -17,7 +18,9 @@ const SubscriptionModal = lazy(() => import("./components/SubscriptionModal.jsx"
 const SubscriptionsPage = lazy(() => import("./pages/SubscriptionsPage.jsx").then((module) => ({ default: module.SubscriptionsPage })));
 
 function hasCompletedOnboarding(storageKey) {
-  return Boolean(storageKey) && window.localStorage.getItem(storageKey) === "completed";
+  if (!storageKey) return false;
+  const legacyStorageKey = storageKey.replace(":v2:", ":v1:");
+  return window.localStorage.getItem(storageKey) === "completed" || window.localStorage.getItem(legacyStorageKey) === "completed";
 }
 
 function LazyLoader({ label }) {
@@ -38,15 +41,38 @@ export function App() {
   const [modalState, setModalState] = useState({ open: false, subscription: null });
   const [onboardingState, setOnboardingState] = useState({ key: "", completed: false });
   const t = getDictionary(language);
-  const { user, forgotPassword, loading, logout, resendVerification, updateProfile } = useAuth();
+  const { user, completeOnboarding, deleteAccount, exportData, forgotPassword, loading, logout, resendVerification, updateProfile, verificationDelivery } = useAuth();
   const subscriptionState = useSubscriptions("", Boolean(user && user.emailVerified !== false));
-  const onboardingStorageKey = user ? `frovely:onboarding:v1:${user.id ?? user.email}` : "";
+  const onboardingStorageKey = user ? `frovely:onboarding:v2:${user.id ?? user.email}` : "";
+
+  const legalPath = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  if (["privacy", "terms", "legal"].includes(legalPath)) {
+    return <LegalPage kind={legalPath} language={language} />;
+  }
 
   const setLanguage = (nextLanguage) => {
     const normalizedLanguage = normalizeLanguage(nextLanguage);
     setLanguageState(normalizedLanguage);
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalizedLanguage);
+    if (user && user.preferredLanguage !== normalizedLanguage && typeof updateProfile === "function") {
+      updateProfile({ preferredLanguage: normalizedLanguage }).catch(() => {
+        notify(t.apiErrorMessage, "error");
+      });
+    }
   };
+
+  useEffect(() => {
+    if (!user?.preferredLanguage) return;
+    const normalizedLanguage = normalizeLanguage(user.preferredLanguage);
+    setLanguageState(normalizedLanguage);
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalizedLanguage);
+  }, [user?.id, user?.preferredLanguage]);
+
+  useEffect(() => {
+    const background = user && ["dashboard", "statistics"].includes(tab) ? "#6C51FF" : "#F8F9FB";
+    document.documentElement.style.backgroundColor = background;
+    document.body.style.backgroundColor = background;
+  }, [tab, user]);
 
   useEffect(() => {
     if (!onboardingStorageKey) {
@@ -62,12 +88,20 @@ export function App() {
     window.setTimeout(() => setToast(null), 2800);
   };
 
+  const resetPageScroll = () => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const appScrollContainer = document.querySelector("[data-app-scroll-container]");
+    if (appScrollContainer) appScrollContainer.scrollTop = 0;
+  };
+
   const navigateTab = (nextTab) => {
     if (nextTab === tab) {
       return;
     }
 
     const changeTab = () => {
+      resetPageScroll();
       setModalState({ open: false, subscription: null });
       setTab(nextTab);
     };
@@ -97,12 +131,23 @@ export function App() {
         user={user}
         resendVerification={resendVerification}
         logout={logout}
+        initialDelivery={verificationDelivery}
       />
     );
   }
 
-  const completeOnboarding = (answers) => {
+  const finishOnboarding = async (answers) => {
+    if (typeof completeOnboarding === "function") {
+      await completeOnboarding({
+        preferredCurrency: answers.preferredCurrency,
+        preferredLanguage: answers.preferredLanguage,
+        timeZone: answers.timeZone,
+        reminderEmailEnabled: answers.reminderEmailEnabled,
+        reminderDaysBefore: answers.reminderDaysBefore
+      });
+    }
     window.localStorage.setItem(onboardingStorageKey, "completed");
+    window.localStorage.setItem(onboardingStorageKey.replace(":v2:", ":v1:"), "completed");
     window.localStorage.setItem(`${onboardingStorageKey}:answers`, JSON.stringify(answers));
     setOnboardingState({ key: onboardingStorageKey, completed: true });
   };
@@ -112,7 +157,7 @@ export function App() {
     : hasCompletedOnboarding(onboardingStorageKey);
 
   if (!onboardingCompleted) {
-    return <OnboardingCarousel t={t} onComplete={completeOnboarding} />;
+    return <OnboardingCarousel t={t} language={language} onComplete={finishOnboarding} />;
   }
 
   const navItems = [
@@ -152,6 +197,8 @@ export function App() {
             t={t}
             subscriptions={subscriptionState.subscriptions}
             totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
+            currency={user.preferredCurrency}
+            language={language}
             loading={subscriptionState.loading}
             error={subscriptionState.error}
             user={user}
@@ -163,6 +210,7 @@ export function App() {
           <SubscriptionsPage
             t={t}
             language={language}
+            currency={user.preferredCurrency}
             notify={notify}
             modalState={modalState}
             setModalState={setModalState}
@@ -173,6 +221,7 @@ export function App() {
           <AnalyticsPage
             t={t}
             language={language}
+            currency={user.preferredCurrency}
             subscriptions={subscriptionState.subscriptions}
             totalMonthlyAmount={subscriptionState.totalMonthlyAmount}
             loading={subscriptionState.loading}
@@ -188,6 +237,10 @@ export function App() {
             setLanguage={setLanguage}
             forgotPassword={forgotPassword}
             updateProfile={updateProfile}
+            currency={user.preferredCurrency}
+            exportData={exportData}
+            deleteAccount={deleteAccount}
+            onOpenAdmin={user.role === "ADMIN" ? () => navigateTab("admin") : undefined}
           />
         )}
         {tab === "admin" && user.role === "ADMIN" && <AdminPage t={t} notify={notify} currentUser={user} />}
@@ -195,6 +248,7 @@ export function App() {
           <SubscriptionModal
             t={t}
             language={language}
+            currency={user.preferredCurrency}
             subscription={modalState.subscription}
             categories={subscriptionState.categories}
             onClose={() => setModalState({ open: false, subscription: null })}

@@ -1,5 +1,8 @@
 import { Router } from "express";
 import {
+  completeOnboarding,
+  deleteMe,
+  exportMyData,
   forgotPassword,
   login,
   logout,
@@ -17,6 +20,7 @@ import { validate } from "../middlewares/validate.js";
 import {
   forgotPasswordSchema,
   loginSchema,
+  onboardingCompleteSchema,
   profileUpdateSchema,
   registerSchema,
   resetPasswordSchema,
@@ -34,4 +38,7 @@ authRouter.get("/csrf", csrfToken);
 authRouter.get("/me", me);
 authRouter.post("/resend-verification", requireAuth, resendVerificationEmail);
 authRouter.put("/me", requireAuth, validate(profileUpdateSchema), updateMe);
+authRouter.post("/onboarding/complete", requireAuth, validate(onboardingCompleteSchema), completeOnboarding);
+authRouter.get("/me/export", requireAuth, exportMyData);
+authRouter.delete("/me", requireAuth, deleteMe);
 authRouter.post("/logout", requireAuth, logout);

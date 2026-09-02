@@ -51,14 +51,20 @@ const envSchema = z
     DATABASE_URL: z.string().min(1),
     JWT_SECRET: z.string().min(24, "JWT_SECRET must contain at least 24 characters"),
     JWT_EXPIRES_IN: z.string().default("7d"),
-    COOKIE_NAME: z.string().default("subscription_manager_token"),
-    CSRF_COOKIE_NAME: z.string().default("subscription_manager_csrf"),
+    COOKIE_NAME: z.string().default("frovely_session"),
+    CSRF_COOKIE_NAME: z.string().default("frovely_csrf"),
     CSRF_HEADER_NAME: z.string().default("x-csrf-token"),
     COOKIE_SECURE: booleanFromEnv(isProduction),
-    COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default(isProduction ? "none" : "lax"),
+    COOKIE_SAME_SITE: z.enum(["lax", "strict", "none"]).default("lax"),
     RESEND_API_KEY: optionalNonEmptyString,
     EMAIL_FROM: z.string().default("Frovely <onboarding@resend.dev>"),
     EMAIL_REPLY_TO: optionalEmailFromEnv,
+    PUBLIC_REGISTRATION_ENABLED: booleanFromEnv(!isProduction),
+    BETA_INVITE_ONLY: booleanFromEnv(false),
+    BETA_INVITE_LIMIT: z.coerce.number().int().min(1).max(500).default(30),
+    BETA_ACCESS_ENABLED: booleanFromEnv(true),
+    PREMIUM_FEATURES_ENABLED: booleanFromEnv(false),
+    REMINDER_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(250),
     AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(isProduction ? 10 : 100)
   })
@@ -76,14 +82,6 @@ const envSchema = z
         code: "custom",
         path: ["COOKIE_SECURE"],
         message: "COOKIE_SECURE must be true in production"
-      });
-    }
-
-    if (value.NODE_ENV === "production" && value.COOKIE_SAME_SITE !== "none") {
-      context.addIssue({
-        code: "custom",
-        path: ["COOKIE_SAME_SITE"],
-        message: "COOKIE_SAME_SITE must be none in production when frontend and backend are cross-site"
       });
     }
 
