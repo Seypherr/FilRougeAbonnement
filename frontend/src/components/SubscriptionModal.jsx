@@ -27,8 +27,6 @@ function validateForm(form, t) {
   const nextErrors = {};
   const price = parsePrice(form.price);
   const selectedDate = parseDateValue(form.renewalDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   if (!form.name.trim()) {
     nextErrors.name = t.nameRequired;
@@ -44,7 +42,7 @@ function validateForm(form, t) {
 
   if (!form.renewalDate) {
     nextErrors.renewalDate = t.renewalDateRequired;
-  } else if (!selectedDate || selectedDate < today) {
+  } else if (!selectedDate) {
     nextErrors.renewalDate = t.renewalDatePast;
   }
 

@@ -12,12 +12,8 @@ const renewalDate = z
     const date = typeof value === "string" ? new Date(`${value}T00:00:00.000Z`) : value;
     return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   })
-  .refine((value) => {
-    const now = new Date();
-    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-    return value.getTime() >= today;
-  }, {
-    message: "Renewal date cannot be in the past"
+  .refine((value) => !Number.isNaN(value.getTime()), {
+    message: "Renewal date is invalid"
   });
 
 export const subscriptionCreateSchema = z.object({

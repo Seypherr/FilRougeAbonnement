@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
 import {
   getTotalMonthlyAmount,
+  normalizeNextRenewalDate,
   serializeSubscription
 } from "../services/subscription.service.js";
 import { recordMetric } from "../services/metrics.service.js";
@@ -33,6 +34,17 @@ const buildSubscriptionFilters = (query, userId = undefined) => ({
       }
     : {})
 });
+
+function normalizeSubscriptionDates(payload, fallback = {}) {
+  if (!payload.renewalDate) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    renewalDate: normalizeNextRenewalDate(payload.renewalDate, payload.billingCycle ?? fallback.billingCycle)
+  };
+}
 
 export const listMySubscriptions = asyncHandler(async (req, res) => {
   const filters = req.validatedQuery ?? req.query;
@@ -67,7 +79,7 @@ export const getMySubscription = asyncHandler(async (req, res) => {
 export const createSubscription = asyncHandler(async (req, res) => {
   const subscription = await prisma.subscription.create({
     data: {
-      ...req.body,
+      ...normalizeSubscriptionDates(req.body),
       userId: req.user.id
     },
     include: { category: true }
@@ -92,7 +104,7 @@ export const updateMySubscription = asyncHandler(async (req, res) => {
 
   const subscription = await prisma.subscription.update({
     where: { id: req.params.id },
-    data: req.body,
+    data: normalizeSubscriptionDates(req.body, existingSubscription),
     include: { category: true }
   });
 

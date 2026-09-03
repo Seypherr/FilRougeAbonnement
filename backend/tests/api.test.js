@@ -806,8 +806,10 @@ describe("subscription API", () => {
     expect(mockPrisma.subscription.create).not.toHaveBeenCalled();
   });
 
-  it("rejects subscription creation with a past renewal date", async () => {
+  it("rolls a past subscription date to the next upcoming renewal", async () => {
     const agent = request.agent(app);
+    const now = new Date();
+    const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
     mockPrisma.user.findUnique.mockResolvedValueOnce(null);
     mockPrisma.user.create.mockResolvedValueOnce(user);
 
@@ -817,8 +819,9 @@ describe("subscription API", () => {
       .expect(201);
 
     mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.subscription.create.mockResolvedValueOnce(subscription);
 
-    const response = await agent
+    await agent
       .post("/api/subscriptions")
       .set(await csrfHeaders(agent))
       .send({
@@ -827,10 +830,11 @@ describe("subscription API", () => {
         billingCycle: "MONTHLY",
         renewalDate: "2000-01-01T00:00:00.000Z"
       })
-      .expect(400);
+      .expect(201);
 
-    expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
-    expect(mockPrisma.subscription.create).not.toHaveBeenCalled();
+    const createData = mockPrisma.subscription.create.mock.calls[0][0].data;
+    expect(createData.renewalDate).toBeInstanceOf(Date);
+    expect(createData.renewalDate.getTime()).toBeGreaterThanOrEqual(today);
   });
 
   it("updates a subscription owned by the authenticated user", async () => {

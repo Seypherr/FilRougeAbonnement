@@ -35,12 +35,17 @@ export function AppShell({ t, user, tab, setTab, navItems, toast, children, onAd
     <main className="min-h-screen overflow-x-hidden bg-[#F8F9FB] text-slate-950 lg:grid lg:grid-cols-[clamp(240px,20vw,280px)_minmax(0,1fr)] lg:p-4 xl:p-6">
       <aside className="hidden min-h-[calc(100vh-32px)] rounded-l-[32px] border-r border-slate-100 bg-white p-5 xl:min-h-[calc(100vh-48px)] xl:p-8 lg:flex lg:flex-col">
         <div>
-          <div className="mb-8 flex min-w-0 items-center gap-3 xl:mb-10">
+          <button
+            type="button"
+            onClick={() => setTab("statistics")}
+            aria-label={`${t.appName} ${t.statistics}`}
+            className="mb-8 flex min-w-0 items-center gap-3 rounded-2xl text-left transition hover:bg-slate-50 active:scale-[0.99] xl:mb-10"
+          >
             <img src="/favicon.png" alt={`${t.appName} logo`} className="size-12 shrink-0 object-contain" />
             <div>
               <p className="truncate text-lg font-black">{t.appName}</p>
             </div>
-          </div>
+          </button>
 
           <nav className="grid gap-2">
             {navItems.map(([id, label]) => {

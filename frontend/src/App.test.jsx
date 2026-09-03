@@ -994,7 +994,7 @@ describe("App", () => {
     expect(apiRequest.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(postCallsBefore);
   });
 
-  it("prevents subscription submission when the renewal date is in the past", async () => {
+  it("allows a past subscription date so the API can calculate the next renewal", async () => {
     useAuth.mockReturnValue({
       user,
       loading: false,
@@ -1013,8 +1013,23 @@ describe("App", () => {
     const postCallsBefore = apiRequest.mock.calls.filter(([, options]) => options?.method === "POST").length;
     fireEvent.click(getButtonWithVisibleText("Ajouter un abonnement"));
 
-    expect(screen.getByText(/ne peut pas/)).toBeInTheDocument();
-    expect(apiRequest.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(postCallsBefore);
+    await waitFor(() => expect(apiRequest.mock.calls.filter(([, options]) => options?.method === "POST")).toHaveLength(postCallsBefore + 1));
+    const postCall = apiRequest.mock.calls.find(([path, options]) => path === "/subscriptions" && options?.method === "POST");
+    expect(postCall[1].body.renewalDate).toBe("2000-01-01");
+  });
+
+  it("opens analytics when clicking the Frovely sidebar brand", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Frovely Statistiques" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Retour au tableau de bord" })).toBeInTheDocument());
   });
 
   it("submits a valid subscription payload from the modal", async () => {
