@@ -1047,6 +1047,39 @@ describe("admin API", () => {
     );
   });
 
+  it("allows an admin to create a beta invitation with a reusable invite link", async () => {
+    const password = await bcrypt.hash("Admin123!", 12);
+    const agent = request.agent(app);
+    const invite = {
+      id: "44444444-4444-4444-8444-444444444444",
+      email: "invitee@test.local",
+      expiresAt: new Date("2099-06-01T00:00:00.000Z"),
+      usedAt: null,
+      revokedAt: null,
+      createdAt: new Date("2099-05-18T00:00:00.000Z")
+    };
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce({ ...admin, password });
+    await agent.post("/api/auth/login").send({ email: admin.email, password: "Admin123!" }).expect(200);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(admin);
+    mockPrisma.betaInvite.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.betaInvite.count.mockResolvedValueOnce(0);
+    mockPrisma.betaInvite.create.mockResolvedValueOnce(invite);
+
+    const response = await agent
+      .post("/api/admin/beta-invites")
+      .set(await csrfHeaders(agent))
+      .send({ email: invite.email, preferredLanguage: "fr" })
+      .expect(201);
+
+    expect(response.body.invite.email).toBe(invite.email);
+    expect(response.body.invite.status).toBe("ACTIVE");
+    expect(response.body.inviteUrl).toMatch(/^http:\/\/localhost:5173\/\?invite=/);
+    expect(response.body.emailDeliveryConfigured).toBe(false);
+    expect(response.body.emailDeliveryFailed).toBe(false);
+  });
+
   it("rejects admin routes for regular users", async () => {
     const password = await bcrypt.hash("Password123!", 12);
     const agent = request.agent(app);

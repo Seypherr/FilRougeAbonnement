@@ -91,6 +91,10 @@ function buildFrontendUrl(path, searchParams) {
   return url.toString();
 }
 
+export function buildBetaInviteUrl(token) {
+  return buildFrontendUrl("/", { invite: token });
+}
+
 async function sendTransactionalEmail({ to, subject, html, text }) {
   if (!resend) {
     logger.warn(`Email provider not configured. Email not sent to ${to}.`);
@@ -211,7 +215,7 @@ export async function sendPasswordResetEmail(user, token) {
 
 export async function sendBetaInviteEmail({ email, token, language }) {
   const copy = getEmailCopy(language);
-  const url = buildFrontendUrl("/", { invite: token });
+  const url = buildBetaInviteUrl(token);
   logger.info(`Beta invitation prepared for ${email}`);
   await sendTransactionalEmail({
     to: email,

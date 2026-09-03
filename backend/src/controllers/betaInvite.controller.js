@@ -1,7 +1,7 @@
 import { env } from "../config/env.js";
 import { prisma } from "../config/prisma.js";
 import { createSecureToken, hashToken } from "../services/auth.service.js";
-import { sendBetaInviteEmail } from "../services/email.service.js";
+import { buildBetaInviteUrl, isEmailDeliveryConfigured, sendBetaInviteEmail } from "../services/email.service.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { HttpError } from "../utils/httpError.js";
 
@@ -76,19 +76,24 @@ export const createBetaInvite = asyncHandler(async (req, res) => {
     ? await prisma.betaInvite.update({ where: { id: existing.id }, data })
     : await prisma.betaInvite.create({ data: { email: req.body.email, ...data } });
 
-  let inviteUrl;
+  const inviteUrl = buildBetaInviteUrl(token);
+  let emailDeliveryFailed = false;
   try {
-    inviteUrl = await sendBetaInviteEmail({
+    await sendBetaInviteEmail({
       email: invite.email,
       token,
       language: req.body.preferredLanguage
     });
-  } catch (error) {
-    await prisma.betaInvite.update({ where: { id: invite.id }, data: { revokedAt: new Date() } });
-    throw error;
+  } catch {
+    emailDeliveryFailed = true;
   }
 
-  res.status(201).json({ invite: publicInvite(invite), inviteUrl });
+  res.status(201).json({
+    invite: publicInvite(invite),
+    inviteUrl,
+    emailDeliveryConfigured: isEmailDeliveryConfigured(),
+    emailDeliveryFailed
+  });
 });
 
 export const revokeBetaInvite = asyncHandler(async (req, res) => {

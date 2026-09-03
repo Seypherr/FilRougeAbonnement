@@ -145,7 +145,7 @@ export function AdminPage({ t, notify, currentUser }) {
       const data = await apiRequest("/admin/beta-invites", { method: "POST", body: newInvite });
       setNewInvite({ email: "", preferredLanguage: "fr" });
       setLatestInviteUrl(data.inviteUrl ?? "");
-      notify(t.betaInviteCreated);
+      notify(data.emailDeliveryFailed ? t.betaInviteEmailFailed : t.betaInviteCreated, data.emailDeliveryFailed ? "warning" : "success");
       await load();
     } catch (err) {
       setError(err.message);
