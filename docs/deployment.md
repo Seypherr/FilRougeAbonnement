@@ -11,6 +11,7 @@ Le projet est un monorepo npm:
 - Base de donnees: PostgreSQL Render.
 - ORM: Prisma.
 - Seed: `backend/prisma/seed.js`, idempotent avec `upsert`.
+- Rappels email: script backend disponible, mais pas de cron Render dans la pre-prod gratuite.
 
 ## Architecture de production
 
@@ -30,7 +31,8 @@ Elle cree:
 - `frovely-api`: service web Node.
 - `frovely-web`: site statique Vite.
 - `frovely-db`: base PostgreSQL.
-- `frovely-renewal-reminders`: cron job Node toutes les quinze minutes.
+
+Le cron `frovely-renewal-reminders` est volontairement exclu du blueprint gratuit, car Render demande une methode de paiement pour les cron jobs. Les rappels peuvent etre testes en lancant le script manuellement hors Render, puis reactives plus tard avec un cron payant ou un autre scheduler.
 
 Configuration backend:
 
@@ -144,7 +146,9 @@ Verifier:
 
 ## Limites a surveiller
 
-- Le service web gratuit peut se mettre en veille ; le cron Render est facturé séparément.
+- Le service web gratuit peut se mettre en veille.
+- La base PostgreSQL gratuite Render expire apres la periode prevue par Render.
+- Les rappels email automatiques ne tournent pas sur la pre-prod gratuite tant qu'aucun scheduler n'est branche.
 - Un domaine Resend vérifié est nécessaire pour envoyer à de vrais utilisateurs.
 - Les valeurs `sync: false` de `render.yaml` sont à renseigner dans Render, jamais dans Git.
-- Le stockage d'avatar reste externe uniquement via URL HTTPS.
+- Les avatars uploades sur le filesystem d'un service Render gratuit peuvent disparaitre apres redeploiement, redemarrage ou mise en veille. Prevoir un stockage persistant avant la vraie production.
