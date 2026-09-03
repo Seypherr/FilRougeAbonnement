@@ -9,8 +9,8 @@
 
 ## Required before opening registration
 
-1. Register `frovely.app` and configure `https://app.frovely.app` for the static site and `https://api.frovely.app` for the API. Do not substitute another domain without a new product decision.
-2. In Render, set `CLIENT_ORIGIN` and `CLIENT_ORIGINS` to `https://app.frovely.app`, and `VITE_API_URL` to `https://api.frovely.app/api`.
+1. Deploy the frontend on Vercel and the backend API on Render over HTTPS. A custom `frovely.app` domain can be added later.
+2. In Render, set `CLIENT_ORIGIN` and `CLIENT_ORIGINS` to the Vercel frontend URL. In Vercel, set `VITE_API_URL` to the Render API URL ending with `/api`.
 3. Keep `COOKIE_SECURE=true` and `COOKIE_SAME_SITE=lax`. The `app` and `api` subdomains must share the same registrable domain.
 4. Configure a verified Resend sending domain, `EMAIL_FROM`, `EMAIL_REPLY_TO`, and `RESEND_API_KEY` for the API. Reuse the same values for the reminder scheduler when it is enabled later.
 5. Complete the publisher identity, support contact, privacy policy, terms, retention periods, and governing-law details in the legal pages. The placeholder pages intentionally state that public launch is blocked until then.
@@ -25,7 +25,7 @@
 
 ## Phone validation
 
-1. Deploy a manual Render preview or staging environment over HTTPS.
+1. Deploy the Vercel frontend and Render backend over HTTPS.
 2. Create a beta invitation as an administrator, then on Android Chrome and iPhone Safari register from the private link, verify the email, complete onboarding, add an subscription, and install Frovely from the browser menu.
 3. Confirm that a reload retains the session and that the service worker never makes subscriptions available offline.
 4. Run `npm run reminders:send --workspace backend` against a staging database after creating a renewal in the configured reminder window. Check one email and ensure a second run does not send a duplicate.

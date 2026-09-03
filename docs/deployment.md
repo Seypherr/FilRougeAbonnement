@@ -1,61 +1,62 @@
-# Deploiement Render
+# Deploiement pre-prod gratuit
 
 ## Objectif
 
-Cette documentation decrit la configuration de production Render preparee pour le projet.
+Cette documentation decrit la pre-production gratuite retenue pour Frovely:
 
-Le projet est un monorepo npm:
-
-- Frontend: React + Vite, heberge en Static Site Render.
-- Backend: Express, heberge en Web Service Node Render.
-- Base de donnees: PostgreSQL Render.
+- Frontend: React + Vite sur Vercel.
+- Backend: Express sur Render Web Service free.
+- Base de donnees: PostgreSQL externe sur Neon ou Supabase.
 - ORM: Prisma.
 - Seed: `backend/prisma/seed.js`, idempotent avec `upsert`.
-- Rappels email: script backend disponible, mais pas de cron Render dans la pre-prod gratuite.
+- Rappels email: script backend disponible, sans cron automatique gratuit pour le moment.
 
-## Architecture de production
+## Architecture
 
 ```mermaid
 flowchart LR
-  User["Utilisateur"] --> Frontend["Frontend Render Static Site"]
-  Frontend --> Api["Backend Render Web Service"]
-  Api --> Db["Render PostgreSQL"]
+  User["Utilisateur"] --> Frontend["Vercel frontend"]
+  Frontend --> Api["Render backend API"]
+  Api --> Db["Neon ou Supabase Postgres"]
 ```
 
-## Blueprint Render
+## Base de donnees
 
-La configuration principale est dans `render.yaml` a la racine du depot.
+Choisir une base PostgreSQL gratuite:
 
-Elle cree:
+- Neon: recommande pour une pre-prod simple avec Prisma.
+- Supabase: possible aussi, en utilisant la connection string compatible Prisma.
+
+La valeur a recuperer sera utilisee dans Render:
+
+```env
+DATABASE_URL=<connection string PostgreSQL Neon ou Supabase>
+```
+
+Prisma utilise `DATABASE_URL` pour les migrations, le seed et l'application.
+
+## Backend Render
+
+Le fichier `render.yaml` ne cree maintenant que l'API:
 
 - `frovely-api`: service web Node.
-- `frovely-web`: site statique Vite.
-- `frovely-db`: base PostgreSQL.
 
-Le cron `frovely-renewal-reminders` est volontairement exclu du blueprint gratuit, car Render demande une methode de paiement pour les cron jobs. Les rappels peuvent etre testes en lancant le script manuellement hors Render, puis reactives plus tard avec un cron payant ou un autre scheduler.
+Configuration:
 
-Configuration backend:
-
+- Runtime: Node
+- Plan: Free
 - Build command: `npm run render:build:backend`
 - Start command: `npm run render:start:backend`
-- Health check: `/api/health`
+- Health check path: `/api/health`
 
-Configuration frontend:
-
-- Build command: `npm run render:build:frontend`
-- Publish directory: `./frontend/dist`
-- SPA rewrite: `/*` vers `/index.html`
-
-## Variables Render
-
-Backend:
+Variables Render backend:
 
 ```env
 NODE_ENV=production
-CLIENT_ORIGIN=https://app.frovely.app
-CLIENT_ORIGINS=https://app.frovely.app
-DATABASE_URL=<genere depuis frovely-db>
-JWT_SECRET=<genere automatiquement par Render>
+CLIENT_ORIGIN=https://<url-vercel>
+CLIENT_ORIGINS=https://<url-vercel>
+DATABASE_URL=<connection string PostgreSQL Neon ou Supabase>
+JWT_SECRET=<genere automatiquement par Render ou secret fort>
 JWT_EXPIRES_IN=7d
 COOKIE_NAME=frovely_session
 COOKIE_SECURE=true
@@ -77,68 +78,51 @@ ADMIN_PASSWORD=<a renseigner dans Render>
 ADMIN_NAME=Frovely Admin
 ```
 
-Frontend:
+## Frontend Vercel
+
+Creer un projet Vercel depuis le meme repository GitHub.
+
+Parametres Vercel:
+
+- Framework preset: Vite
+- Root Directory: `frontend`
+- Build Command: `npm run build`
+- Output Directory: `dist`
+
+Le fichier `frontend/vercel.json` gere les rewrites SPA et les headers de securite.
+
+Variable Vercel frontend:
 
 ```env
-VITE_API_URL=https://api.frovely.app/api
+VITE_API_URL=https://<url-render-api>/api
 ```
 
-Ces valeurs ne doivent etre activees qu'apres l'achat de `frovely.app`, le rattachement DNS et l'emission des certificats HTTPS par Render.
+## Ordre de creation conseille
 
-## Base de donnees, migrations et seed
-
-Prisma utilise `DATABASE_URL`.
-
-Commandes utiles:
-
-```bash
-npm run db:generate
-npm run db:deploy
-npm run db:seed
-```
-
-Sur Render:
-
-- `render:start:backend` lance `prisma migrate deploy`, execute le seed idempotent, puis demarre le backend.
-- Le seed est idempotent: les categories et l'admin sont crees/mis a jour avec `upsert`.
-
-## Deploiement depuis Render
-
-1. Pousser le projet sur GitHub avec `render.yaml`.
-2. Dans Render, choisir `New` puis `Blueprint`.
-3. Connecter le repository GitHub du projet.
-4. Confirmer le blueprint.
-5. Renseigner les variables demandees:
-   - `RESEND_API_KEY`
-   - `ADMIN_EMAIL`
-   - `ADMIN_PASSWORD`
-6. Laisser Render creer la base, le backend et le frontend.
-7. Une fois les deux URLs publiques creees, verifier qu'elles correspondent aux valeurs du blueprint.
-
-## Securite production
-
-Mesures presentes:
-
-- Helmet pour les en-tetes HTTP.
-- Rate-limit sur login/register.
-- Cookie HTTP-only pour le JWT.
-- Cookie `Secure` obligatoire en production.
-- `SameSite=Lax` pour les sous-domaines `app` et `api` du même domaine Frovely.
-- CORS par allowlist stricte via `CLIENT_ORIGIN` et `CLIENT_ORIGINS`.
-- Protection CSRF avec le header `x-csrf-token`.
-- Validation Zod sur les routes sensibles.
-- Mot de passe hashe avec bcrypt.
-- `JWT_SECRET` genere par Render et valide par le schema d'environnement.
+1. Creer la base PostgreSQL gratuite sur Neon ou Supabase.
+2. Copier sa connection string.
+3. Creer le backend Render avec `render.yaml` ou en Web Service manuel.
+4. Renseigner `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `RESEND_API_KEY`, `EMAIL_FROM`.
+5. Deployer le backend Render et recuperer son URL publique.
+6. Creer le frontend Vercel avec `Root Directory = frontend`.
+7. Renseigner `VITE_API_URL=https://<url-render-api>/api` dans Vercel.
+8. Recuperer l'URL Vercel et la mettre dans Render:
+   - `CLIENT_ORIGIN=https://<url-vercel>`
+   - `CLIENT_ORIGINS=https://<url-vercel>`
+9. Redeployer Render puis Vercel.
 
 ## Verification apres deploiement
 
 Verifier:
 
-- `https://api.<domaine-frovely>/api/health`
-- Chargement du frontend public.
-- Creation d'une invitation beta par un administrateur, puis inscription depuis le lien prive.
+- `https://<url-render-api>/api/health`
+- Chargement du frontend Vercel.
+- Creation d'une invitation beta par un administrateur.
+- Inscription depuis le lien prive.
 - Verification email via Resend.
 - Connexion utilisateur.
+- Onboarding affiche seulement a la premiere connexion.
+- Upload de photo de profil.
 - Creation, modification et archivage d'un abonnement.
 - Dashboard, analytics, profil et admin.
 - Cookies presents en HTTPS.
@@ -146,9 +130,8 @@ Verifier:
 
 ## Limites a surveiller
 
-- Le service web gratuit peut se mettre en veille.
-- La base PostgreSQL gratuite Render expire apres la periode prevue par Render.
-- Les rappels email automatiques ne tournent pas sur la pre-prod gratuite tant qu'aucun scheduler n'est branche.
-- Un domaine Resend vérifié est nécessaire pour envoyer à de vrais utilisateurs.
-- Les valeurs `sync: false` de `render.yaml` sont à renseigner dans Render, jamais dans Git.
-- Les avatars uploades sur le filesystem d'un service Render gratuit peuvent disparaitre apres redeploiement, redemarrage ou mise en veille. Prevoir un stockage persistant avant la vraie production.
+- Render free peut mettre le backend en veille.
+- Les rappels email automatiques ne tournent pas tant qu'aucun scheduler gratuit ou payant n'est branche.
+- Un domaine Resend verifie est necessaire pour envoyer a de vrais utilisateurs.
+- Les valeurs sensibles sont a renseigner dans Render/Vercel/Neon/Supabase, jamais dans Git.
+- Les avatars uploades sur le filesystem Render peuvent disparaitre apres redeploiement, redemarrage ou mise en veille. Prevoir un stockage persistant avant la vraie production.
