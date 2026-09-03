@@ -43,6 +43,7 @@ export function AdminPage({ t, notify, currentUser }) {
   const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "USER", isActive: true });
   const [newInvite, setNewInvite] = useState({ email: "", preferredLanguage: "fr" });
   const [latestInviteUrl, setLatestInviteUrl] = useState("");
+  const [latestInviteManualMode, setLatestInviteManualMode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -141,17 +142,30 @@ export function AdminPage({ t, notify, currentUser }) {
     event.preventDefault();
     setCreatingInvite(true);
     setLatestInviteUrl("");
+    setLatestInviteManualMode(false);
     try {
       const data = await apiRequest("/admin/beta-invites", { method: "POST", body: newInvite });
+      const manualInvite = data.emailDeliveryFailed || data.emailDeliveryConfigured === false;
       setNewInvite({ email: "", preferredLanguage: "fr" });
       setLatestInviteUrl(data.inviteUrl ?? "");
-      notify(data.emailDeliveryFailed ? t.betaInviteEmailFailed : t.betaInviteCreated, data.emailDeliveryFailed ? "warning" : "success");
+      setLatestInviteManualMode(manualInvite);
+      notify(manualInvite ? t.betaInviteManualReady : t.betaInviteCreated, manualInvite ? "warning" : "success");
       await load();
     } catch (err) {
       setError(err.message);
       notify(err.message, "error");
     } finally {
       setCreatingInvite(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!latestInviteUrl) return;
+    try {
+      await navigator.clipboard.writeText(latestInviteUrl);
+      notify(t.betaInviteCopied);
+    } catch {
+      notify(t.betaInviteCopyFailed, "error");
     }
   };
 
@@ -303,7 +317,21 @@ export function AdminPage({ t, notify, currentUser }) {
               </select>
               <button disabled={creatingInvite} className="min-h-11 rounded-xl bg-[#6C51FF] px-5 text-sm font-black text-white disabled:opacity-60">{creatingInvite ? t.loading : t.sendBetaInvite}</button>
             </form>
-            {latestInviteUrl && <p className="break-all rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">{t.betaInviteLink}: <a className="underline" href={latestInviteUrl}>{latestInviteUrl}</a></p>}
+            {latestInviteUrl && (
+              <div className={`rounded-2xl border p-4 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)] ${latestInviteManualMode ? "border-amber-100 bg-amber-50 text-amber-900" : "border-emerald-100 bg-emerald-50 text-emerald-800"}`}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-sm font-black">{latestInviteManualMode ? t.betaInviteManualTitle : t.betaInviteLink}</p>
+                    <a className="mt-1 block break-all text-sm font-semibold underline" href={latestInviteUrl}>{latestInviteUrl}</a>
+                    {latestInviteManualMode && <p className="mt-2 text-xs font-bold opacity-80">{t.betaInviteManualHint}</p>}
+                  </div>
+                  <button type="button" onClick={copyInviteLink} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-slate-900 shadow-sm ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:shadow-md active:scale-95">
+                    <i className="ph-bold ph-copy text-base text-[#6C51FF]" />
+                    {t.copyLink}
+                  </button>
+                </div>
+              </div>
+            )}
             <section className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_4px_20px_-12px_rgba(0,0,0,0.06)]">
               <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-black text-slate-900">{t.betaCohort}</h2><span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">{invites.length}/30</span></div>
               <div className="grid gap-2">
