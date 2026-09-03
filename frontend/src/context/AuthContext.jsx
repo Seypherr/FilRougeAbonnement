@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiRequest } from "../api/client.js";
+import { apiRequest, uploadAvatarFile } from "../api/client.js";
 
 const AuthContext = createContext(null);
 
@@ -62,16 +62,17 @@ export function AuthProvider({ children }) {
         setUser(data.user);
         return data.user;
       },
+      uploadAvatar: async (file) => {
+        const data = await uploadAvatarFile(file);
+        setUser(data.user);
+        return data.user;
+      },
       completeOnboarding: async (payload) => {
         const data = await apiRequest("/auth/onboarding/complete", { method: "POST", body: payload });
         setUser(data.user);
         return data.user;
       },
       exportData: async () => apiRequest("/auth/me/export"),
-      deleteAccount: async () => {
-        await apiRequest("/auth/me", { method: "DELETE" });
-        setUser(null);
-      },
       refreshUser: async () => {
         const data = await apiRequest("/auth/me");
         setUser(data.user);

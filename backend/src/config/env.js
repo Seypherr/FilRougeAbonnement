@@ -66,7 +66,8 @@ const envSchema = z
     PREMIUM_FEATURES_ENABLED: booleanFromEnv(false),
     REMINDER_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(250),
     AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
-    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(isProduction ? 10 : 100)
+    AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(isProduction ? 10 : 100),
+    UPLOAD_ROOT: optionalNonEmptyString
   })
   .superRefine((value, context) => {
     if (value.COOKIE_SAME_SITE === "none" && !value.COOKIE_SECURE) {

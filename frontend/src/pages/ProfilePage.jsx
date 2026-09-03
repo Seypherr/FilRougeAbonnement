@@ -1,204 +1,34 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  Bell,
+  Camera,
+  CheckCircle2,
+  ChevronRight,
+  Download,
+  Edit3,
+  Globe2,
+  Headphones,
+  KeyRound,
+  LogOut,
+  Mail,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+  X
+} from "lucide-react";
 import { UserAvatar } from "../components/UserAvatar.jsx";
 import { SUPPORTED_LANGUAGES } from "../i18n/dictionaries.js";
 import { cycleLabels, formatMoney } from "../utils/subscriptions.js";
 import { getBrowserTimeZone, getCurrencyLabel, SUPPORTED_CURRENCIES } from "../utils/international.js";
 
-function isValidOptionalAvatarValue(value) {
-  if (!value.trim()) return true;
-
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function AvatarPhotoModal({ t, user, value, saving, onClose, onSave, onRemove }) {
-  const [draft, setDraft] = useState(value ?? "");
-  const [error, setError] = useState("");
-  const trimmedDraft = draft.trim();
-  const draftIsValid = isValidOptionalAvatarValue(draft);
-  const previewUser = { ...user, avatarUrl: draftIsValid ? trimmedDraft || null : null };
-  const title = t.profilePhotoTitle;
-  const help = t.profilePhotoHelp;
-  const importLabel = t.avatarUploadComingSoon;
-  const deleteLabel = t.removeAvatar;
-  const urlLabel = t.avatarHttpsUrl;
-  const urlPlaceholder = "https://example.com/avatar.png";
-
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
-  const apply = async () => {
-    if (!draftIsValid) {
-      setError(t.avatarUrlInvalid);
-      return;
-    }
-
-    try {
-      setError("");
-      await onSave(trimmedDraft);
-    } catch (err) {
-      setError(err.message || t.apiErrorMessage);
-    }
-  };
-
-  const removeAvatar = async () => {
-    try {
-      setDraft("");
-      setError("");
-      await onRemove();
-    } catch (err) {
-      setError(err.message || t.apiErrorMessage);
-    }
-  };
-
-  const modal = (
-    <div
-      className="modal-backdrop-enter fixed inset-0 z-[90] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-6"
-      onMouseDown={onClose}
-    >
-      <div
-        className="modal-panel-enter max-h-[calc(100dvh-12px)] w-full overflow-y-auto overscroll-contain rounded-t-[28px] bg-white p-4 shadow-[0_-12px_40px_-20px_rgba(15,23,42,0.4)] sm:max-w-md sm:rounded-[28px] sm:p-6"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black text-slate-900">{title}</h2>
-            <p className="mt-1 text-xs font-semibold text-slate-500">{help}</p>
-          </div>
-          <button
-            type="button"
-            aria-label={t.closeModal}
-            onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition hover:bg-slate-100"
-          >
-            <i className="ph-bold ph-x text-sm" />
-          </button>
-        </div>
-
-        <div className="mb-5 rounded-[24px] border border-slate-100 bg-slate-50 p-5 text-center">
-          <UserAvatar
-            user={previewUser}
-            className="mx-auto size-28 border-4 border-white bg-[#7047EB] text-white shadow-[0_14px_30px_-12px_rgba(112,71,235,0.45)]"
-            textClassName="text-4xl"
-          />
-        </div>
-
-        <button
-          type="button"
-          disabled
-          className="w-full cursor-not-allowed rounded-[16px] border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-black text-slate-400"
-        >
-          <i className="ph-bold ph-upload-simple mr-2 text-sm" />
-          {importLabel}
-        </button>
-        <div className="mt-4">
-          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{urlLabel}</label>
-          <input
-            aria-label={urlLabel}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setError("");
-            }}
-            placeholder={urlPlaceholder}
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF]"
-          />
-        </div>
-        {error && <p role="alert" className="mt-3 rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}
-
-        <button
-          type="button"
-          onClick={removeAvatar}
-          disabled={saving}
-          className="mt-4 w-full rounded-[16px] border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 transition hover:bg-rose-100 active:scale-[0.98]"
-        >
-          {deleteLabel}
-        </button>
-
-        <div className="mt-3 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="flex-1 rounded-[16px] border border-slate-200 px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98]"
-          >
-            {t.cancel}
-          </button>
-          <button
-            type="button"
-            onClick={apply}
-            disabled={saving}
-            className="flex-[1.3] rounded-[16px] bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98]"
-          >
-            {saving ? t.loading : t.save}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  return createPortal(modal, document.body);
-}
-
-function ConfirmationModal({ title, message, cancelLabel, confirmLabel, loading = false, onCancel, onConfirm }) {
-  const modal = (
-    <div
-      className="modal-backdrop-enter fixed inset-0 z-[90] grid place-items-end bg-slate-900/40 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-6"
-      onMouseDown={onCancel}
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="profile-confirmation-title"
-        className="modal-panel-enter w-full rounded-t-[26px] bg-white p-5 shadow-[0_-14px_42px_-22px_rgba(15,23,42,0.55)] sm:max-w-sm sm:rounded-[26px]"
-        onMouseDown={(event) => event.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#F4F0FF] text-[#7047EB]">
-            <i className="ph-bold ph-check-circle text-lg" />
-          </span>
-          <div className="min-w-0">
-            <h2 id="profile-confirmation-title" className="text-base font-black text-slate-950">{title}</h2>
-            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">{message}</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-[16px] border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {cancelLabel}
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={loading}
-            className="rounded-[16px] bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loading ? "..." : confirmLabel}
-          </button>
-        </div>
-      </section>
-    </div>
-  );
-
-  return createPortal(modal, document.body);
-}
+const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const AVATAR_MIN_SIZE = 300;
+const AVATAR_MAX_SIZE = 4096;
+const AVATAR_RATIO_MIN = 0.75;
+const AVATAR_RATIO_MAX = 1.33;
+const AVATAR_ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 function getAppPlan(user) {
   return user.appSubscription ?? user.appPlan ?? user.subscriptionPlan ?? user.plan ?? null;
@@ -212,22 +42,22 @@ function getPlanValue(plan, keys, fallback = null) {
 function formatPlanDate(value) {
   if (!value) return "-";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-export function ProfilePage({ t, user, language, setLanguage, forgotPassword, updateProfile, currency = "EUR", exportData, deleteAccount, onOpenAdmin }) {
-  const [profileError, setProfileError] = useState("");
-  const [supportMessage, setSupportMessage] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savingReminder, setSavingReminder] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
-  const [pendingProfileSave, setPendingProfileSave] = useState(null);
-  const [supportModalOpen, setSupportModalOpen] = useState(false);
-  const [forgotPasswordConfirmationOpen, setForgotPasswordConfirmationOpen] = useState(false);
-  const [form, setForm] = useState({
+function getCompletionPercent(form) {
+  const checks = [
+    Boolean(form.name.trim()),
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()),
+    Boolean(form.preferredCurrency),
+    Boolean(form.timeZone.trim()),
+    Boolean(form.avatarUrl.trim())
+  ];
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+}
+
+function createProfileForm(user, currency) {
+  return {
     name: user.name ?? "",
     email: user.email ?? "",
     avatarUrl: user.avatarUrl ?? "",
@@ -235,55 +65,285 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
     timeZone: user.timeZone ?? getBrowserTimeZone(),
     reminderEmailEnabled: user.reminderEmailEnabled ?? true,
     reminderDaysBefore: user.reminderDaysBefore ?? [7, 3, 1]
-  });
-  const previewUser = {
-    ...user,
-    name: form.name || user.name,
-    email: form.email || user.email,
-    avatarUrl: form.avatarUrl || null
   };
-  const editAvatarLabel = t.editProfilePhoto;
-  const editProfileLabel = t.editProfile;
+}
+
+function EmailValue({ email }) {
+  const [localPart, domainPart] = String(email || "").split("@");
+  if (!localPart || !domainPart) return email || "-";
+  return <>{localPart}@<wbr />{domainPart}</>;
+}
+
+function IconButton({ label, children, className = "", ...props }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      className={`grid size-10 shrink-0 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-[#7047EB]/30 hover:bg-[#F4F0FF] hover:text-[#7047EB] active:scale-[0.98] ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ProfileInfoCard({ icon: Icon, label, value, tone = "default", valueWrap = "normal" }) {
+  const accent = tone === "danger" ? "bg-rose-50 text-rose-600" : "bg-[#F4F0FF] text-[#7047EB]";
+  const valueWrapClass = valueWrap === "anywhere" ? "[overflow-wrap:anywhere]" : "break-words";
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_16px_34px_-30px_rgba(15,23,42,0.55)]">
+      <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${accent}`}>
+        <Icon size={20} strokeWidth={2.4} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-xs font-black uppercase tracking-wide text-slate-400">{label}</span>
+        <span className={`mt-1 block ${valueWrapClass} text-sm font-black leading-snug ${tone === "danger" ? "text-rose-700" : "text-slate-950"}`}>{value || "-"}</span>
+      </span>
+    </div>
+  );
+}
+
+function MenuAction({ icon: Icon, label, tone = "default", onClick, children }) {
+  const color = tone === "danger" ? "text-rose-600" : "text-slate-800";
+  const iconColor = tone === "danger" ? "bg-rose-50 text-rose-600" : "bg-[#F4F0FF] text-[#7047EB]";
+  return (
+    <div className="flex min-w-0 items-center gap-3 border-t border-slate-100 py-3 first:border-t-0 first:pt-0">
+      <span className={`grid size-10 shrink-0 place-items-center rounded-2xl ${iconColor}`}>
+        <Icon size={18} strokeWidth={2.35} />
+      </span>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className={`min-w-0 flex-1 text-left ${color}`}
+      >
+        <span className="block text-sm font-black">{label}</span>
+      </button>
+      {children ?? <ChevronRight className={tone === "danger" ? "text-rose-400" : "text-slate-300"} size={18} />}
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="grid gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function readImageDimensions(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Invalid image"));
+    };
+    image.src = url;
+  });
+}
+
+async function validateAvatarFile(file, t) {
+  if (!AVATAR_ACCEPTED_TYPES.includes(file.type)) {
+    return t.avatarUploadInvalidType;
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    return t.avatarUploadInvalidSize;
+  }
+  try {
+    const { width, height } = await readImageDimensions(file);
+    const ratio = width / height;
+    if (width < AVATAR_MIN_SIZE || height < AVATAR_MIN_SIZE || width > AVATAR_MAX_SIZE || height > AVATAR_MAX_SIZE || ratio < AVATAR_RATIO_MIN || ratio > AVATAR_RATIO_MAX) {
+      return t.avatarUploadInvalidDimensions;
+    }
+  } catch {
+    return t.avatarUploadReadError;
+  }
+  return "";
+}
+
+function AvatarPhotoModal({ t, user, value, saving, onClose, onUpload, onRemove }) {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(value ?? "");
+  const [error, setError] = useState("");
+  const previewUser = { ...user, avatarUrl: previewUrl || null };
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!selectedFile) {
+      setPreviewUrl(value ?? "");
+      return undefined;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile, value]);
+
+  const chooseFile = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const validationError = await validateAvatarFile(file, t);
+    if (validationError) {
+      setSelectedFile(null);
+      setError(validationError);
+      event.target.value = "";
+      return;
+    }
+    setSelectedFile(file);
+    setError("");
+  };
+
+  const apply = async () => {
+    if (!selectedFile) {
+      setError(t.avatarUploadRequired);
+      return;
+    }
+    try {
+      setError("");
+      await onUpload(selectedFile);
+    } catch (err) {
+      setError(err.message || t.apiErrorMessage);
+    }
+  };
+
+  const removeCurrentAvatar = async () => {
+    try {
+      setSelectedFile(null);
+      setPreviewUrl("");
+      setError("");
+      await onRemove();
+    } catch (err) {
+      setError(err.message || t.apiErrorMessage);
+    }
+  };
+
+  return createPortal(
+    <div className="modal-backdrop-enter fixed inset-0 z-[90] flex items-end justify-center bg-slate-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-6" onMouseDown={onClose}>
+      <section role="dialog" aria-modal="true" aria-labelledby="profile-photo-title" className="modal-panel-enter max-h-[calc(100dvh-12px)] w-full overflow-y-auto overscroll-contain rounded-t-[28px] bg-white p-5 shadow-[0_-12px_40px_-20px_rgba(15,23,42,0.4)] sm:max-w-md sm:rounded-[28px] sm:p-6" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 id="profile-photo-title" className="text-lg font-black text-slate-900">{t.profilePhotoTitle}</h2>
+            <p className="mt-1 text-xs font-semibold leading-relaxed text-slate-500">{t.profilePhotoHelp}</p>
+          </div>
+          <IconButton label={t.closeModal} onClick={onClose} className="size-9 rounded-full">
+            <X size={16} />
+          </IconButton>
+        </header>
+        <div className="mb-5 rounded-[24px] bg-slate-50 py-6 text-center">
+          <UserAvatar user={previewUser} className="mx-auto size-28 border-4 border-white bg-[#7047EB] text-white shadow-[0_14px_30px_-12px_rgba(112,71,235,0.45)]" textClassName="text-4xl" />
+        </div>
+        <label className="grid min-h-32 cursor-pointer place-items-center rounded-[24px] border border-dashed border-[#7047EB]/30 bg-[#F4F0FF] p-5 text-center transition hover:border-[#7047EB]/60 hover:bg-[#EEE8FF]">
+          <input aria-label={t.avatarUploadAction} type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseFile} className="sr-only" />
+          <span className="grid size-11 place-items-center rounded-2xl bg-white text-[#7047EB] shadow-sm">
+            <Camera size={20} />
+          </span>
+          <span className="mt-3 block text-sm font-black text-slate-950">{selectedFile?.name || t.avatarUploadAction}</span>
+          <span className="mt-1 block text-xs font-bold leading-relaxed text-slate-500">{t.avatarUploadCriteria}</span>
+        </label>
+        {error && <p role="alert" className="mt-3 rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700">{error}</p>}
+        <button type="button" onClick={removeCurrentAvatar} disabled={saving} className="mt-4 w-full rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 transition hover:bg-rose-100 active:scale-[0.98]">{t.removeAvatar}</button>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <button type="button" onClick={onClose} disabled={saving} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98]">{t.cancel}</button>
+          <button type="button" onClick={apply} disabled={saving} className="rounded-2xl bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98]">{saving ? t.loading : t.save}</button>
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
+}
+
+function ConfirmationModal({ title, message, cancelLabel, confirmLabel, loading = false, onCancel, onConfirm }) {
+  return createPortal(
+    <div className="modal-backdrop-enter fixed inset-0 z-[90] grid place-items-end bg-slate-900/40 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-6" onMouseDown={onCancel}>
+      <section role="dialog" aria-modal="true" aria-labelledby="profile-confirmation-title" className="modal-panel-enter w-full rounded-t-[26px] bg-white p-5 shadow-[0_-14px_42px_-22px_rgba(15,23,42,0.55)] sm:max-w-sm sm:rounded-[26px]" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="mb-4 flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#F4F0FF] text-[#7047EB]">
+            <CheckCircle2 size={18} />
+          </span>
+          <div className="min-w-0">
+            <h2 id="profile-confirmation-title" className="text-base font-black text-slate-950">{title}</h2>
+            <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-500">{message}</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button type="button" onClick={onCancel} disabled={loading} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:opacity-70">{cancelLabel}</button>
+          <button type="button" onClick={onConfirm} disabled={loading} className="rounded-2xl bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] disabled:opacity-70">{loading ? "..." : confirmLabel}</button>
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
+}
+
+export function ProfilePage({ t, user, language, setLanguage, forgotPassword, updateProfile, uploadAvatar, currency = "EUR", exportData, logout, globalModalOpen = false, onBack, onOpenAdmin }) {
+  const [profileError, setProfileError] = useState("");
+  const [supportMessage, setSupportMessage] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savingReminder, setSavingReminder] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [pendingProfileSave, setPendingProfileSave] = useState(null);
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [forgotPasswordConfirmationOpen, setForgotPasswordConfirmationOpen] = useState(false);
+  const [reminderDisableConfirmationOpen, setReminderDisableConfirmationOpen] = useState(false);
+  const [logoutConfirmationOpen, setLogoutConfirmationOpen] = useState(false);
+  const [form, setForm] = useState(() => createProfileForm(user, currency));
   const appPlan = getAppPlan(user);
   const appPlanName = getPlanValue(appPlan, ["name", "planName", "plan", "title"], t.noAppPlanTitle);
   const appPlanPrice = getPlanValue(appPlan, ["price", "amount", "monthlyPrice", "subscriptionPrice"]);
   const appPlanCycle = getPlanValue(appPlan, ["billingCycle", "cycle", "interval"], "MONTHLY");
-  const appPlanStatus = getPlanValue(appPlan, ["status"], appPlan ? t.active : t.disabled);
+  const appPlanStatus = getPlanValue(appPlan, ["status"], t.active);
   const appPlanNextPayment = getPlanValue(appPlan, ["nextPaymentDate", "nextBillingDate", "renewalDate", "currentPeriodEnd"]);
-  const appPlanStartedAt = getPlanValue(appPlan, ["startedAt", "createdAt", "startDate"]);
+  const previewUser = { ...user, name: form.name.trim() || user.name, email: form.email.trim() || user.email, avatarUrl: form.avatarUrl || null };
+  const completionPercent = getCompletionPercent(form);
+  const profileIsComplete = completionPercent >= 100;
+  const completionText = (t.profileCompletionStatus ?? "{percent}% Complete your profile").replace("{percent}", completionPercent);
   const emailRemindersLabel = t.emailReminders ?? "Email reminders";
   const timeZoneLabel = t.timeZone ?? "Time zone";
-  const reminderDaysLabel = t.reminderDays ?? "Reminder days";
+  const accessLabel = user.accessPlan === "PREMIUM" ? "Premium" : user.accessPlan === "BETA" ? t.profileBetaAccess : t.freePlan;
 
   const resetDraft = () => {
-    setForm({
-      name: user.name ?? "",
-      email: user.email ?? "",
-      avatarUrl: user.avatarUrl ?? "",
-      preferredCurrency: user.preferredCurrency ?? currency,
-      timeZone: user.timeZone ?? getBrowserTimeZone(),
-      reminderEmailEnabled: user.reminderEmailEnabled ?? true,
-      reminderDaysBefore: user.reminderDaysBefore ?? [7, 3, 1]
-    });
+    setForm(createProfileForm(user, currency));
     setProfileError("");
     setSaved(false);
     setAvatarModalOpen(false);
   };
 
   useEffect(() => {
-    setForm({
-      name: user.name ?? "",
-      email: user.email ?? "",
-      avatarUrl: user.avatarUrl ?? "",
-      preferredCurrency: user.preferredCurrency ?? currency,
-      timeZone: user.timeZone ?? getBrowserTimeZone(),
-      reminderEmailEnabled: user.reminderEmailEnabled ?? true,
-      reminderDaysBefore: user.reminderDaysBefore ?? [7, 3, 1]
-    });
+    setForm(createProfileForm(user, currency));
   }, [user.name, user.email, user.avatarUrl, user.preferredCurrency, user.timeZone, user.reminderEmailEnabled, user.reminderDaysBefore, currency]);
 
+  useEffect(() => {
+    if (globalModalOpen) setSettingsOpen(false);
+  }, [globalModalOpen]);
+
+  useEffect(() => {
+    if (!settingsOpen) return undefined;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") setSettingsOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [settingsOpen]);
+
   const change = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((current) => ({ ...current, [field]: value }));
     setProfileError("");
     setSaved(false);
   };
@@ -293,47 +353,23 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
       setProfileError(t.nameRequired);
       return false;
     }
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextForm.email.trim())) {
       setProfileError(t.invalidEmail);
       return false;
     }
-
-    if (!isValidOptionalAvatarValue(nextForm.avatarUrl)) {
-      setProfileError(t.avatarUrlInvalid);
-      return false;
-    }
-
     return true;
   };
 
   const saveProfile = async (nextForm) => {
     setProfileError("");
     setSaved(false);
-
     try {
       setSaving(true);
-      const profilePayload = {
-        name: nextForm.name.trim(),
-        email: nextForm.email.trim().toLowerCase(),
-        avatarUrl: nextForm.avatarUrl.trim() || null
-      };
-      if (user.preferredCurrency && nextForm.preferredCurrency !== user.preferredCurrency) {
-        profilePayload.preferredCurrency = nextForm.preferredCurrency;
-      }
-      if (user.timeZone && nextForm.timeZone !== user.timeZone) {
-        profilePayload.timeZone = nextForm.timeZone;
-      }
-      await updateProfile(profilePayload);
-      setForm({
-        name: nextForm.name.trim(),
-        email: nextForm.email.trim().toLowerCase(),
-        avatarUrl: nextForm.avatarUrl.trim(),
-        preferredCurrency: nextForm.preferredCurrency,
-        timeZone: nextForm.timeZone,
-        reminderEmailEnabled: nextForm.reminderEmailEnabled,
-        reminderDaysBefore: nextForm.reminderDaysBefore
-      });
+      const payload = { name: nextForm.name.trim(), email: nextForm.email.trim().toLowerCase() };
+      if (user.preferredCurrency && nextForm.preferredCurrency !== user.preferredCurrency) payload.preferredCurrency = nextForm.preferredCurrency;
+      if (user.timeZone && nextForm.timeZone !== user.timeZone) payload.timeZone = nextForm.timeZone;
+      await updateProfile(payload);
+      setForm((current) => ({ ...current, ...nextForm, name: payload.name, email: payload.email }));
       setIsEditing(false);
       setSaved(true);
       window.setTimeout(() => setSaved(false), 1800);
@@ -346,50 +382,50 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
     }
   };
 
-  const handleProfileSubmit = async (event) => {
-    event.preventDefault();
-
-    setProfileError("");
-    setSaved(false);
-
-    if (!validateProfile(form)) {
-      return;
-    }
-
-    setPendingProfileSave({ ...form });
-  };
-
-  const confirmProfileSave = async () => {
-    if (!pendingProfileSave) {
-      return;
-    }
-
-    try {
-      await saveProfile(pendingProfileSave);
-      setPendingProfileSave(null);
-    } catch {
-      setPendingProfileSave(null);
-    }
-  };
-
-  const saveAvatarFromModal = async (avatarUrl) => {
-    await saveProfile({ ...form, avatarUrl });
-    setAvatarModalOpen(false);
-  };
-
-  const startEditing = () => {
+  const openEdit = () => {
+    setSettingsOpen(false);
     setProfileError("");
     setSaved(false);
     setIsEditing(true);
   };
 
-  const cancelEditing = () => {
-    resetDraft();
-    setIsEditing(false);
+  const handleProfileSubmit = (event) => {
+    event.preventDefault();
+    if (validateProfile(form)) setPendingProfileSave({ ...form });
   };
 
-  const toggleReminderEmails = async () => {
-    const nextEnabled = !form.reminderEmailEnabled;
+  const removeAvatar = async () => {
+    setProfileError("");
+    setSaved(false);
+    try {
+      setSaving(true);
+      const updatedUser = await updateProfile({ avatarUrl: null });
+      setForm((current) => ({ ...current, avatarUrl: updatedUser.avatarUrl ?? "" }));
+      setAvatarModalOpen(false);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1800);
+    } catch (err) {
+      setProfileError(err.message || t.apiErrorMessage);
+      throw err;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (file) => {
+    setSaving(true);
+    try {
+      const updatedUser = await uploadAvatar(file);
+      setForm((current) => ({ ...current, avatarUrl: updatedUser.avatarUrl ?? "" }));
+      setAvatarModalOpen(false);
+      setSaved(true);
+      window.setTimeout(() => setSaved(false), 1800);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setReminderEmails = async (nextEnabled) => {
     setSupportMessage("");
     try {
       setSavingReminder(true);
@@ -403,30 +439,17 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
     }
   };
 
-  const toggleReminderDay = async (day) => {
-    const selectedDays = form.reminderDaysBefore.includes(day);
-    const nextDays = selectedDays
-      ? form.reminderDaysBefore.filter((value) => value !== day)
-      : [...form.reminderDaysBefore, day].sort((a, b) => b - a);
-
-    if (!nextDays.length) {
-      setSupportMessage(t.reminderDaysRequired ?? "Choose at least one reminder day.");
+  const toggleReminderEmails = async () => {
+    if (form.reminderEmailEnabled) {
+      setSettingsOpen(false);
+      setReminderDisableConfirmationOpen(true);
       return;
     }
-
-    setSupportMessage("");
-    try {
-      await updateProfile({ reminderDaysBefore: nextDays });
-      setForm((current) => ({ ...current, reminderDaysBefore: nextDays }));
-      setSupportMessage(t.profileSaved);
-    } catch (error) {
-      setSupportMessage(error.message || t.apiErrorMessage);
-    }
+    await setReminderEmails(true);
   };
 
   const requestPasswordReset = async () => {
     setForgotPasswordConfirmationOpen(false);
-    setSupportMessage("");
     try {
       await forgotPassword?.({ email: user.email });
       setSupportMessage(t.passwordResetEmailSent);
@@ -438,364 +461,179 @@ export function ProfilePage({ t, user, language, setLanguage, forgotPassword, up
   const downloadMyData = async () => {
     try {
       const data = await exportData?.();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
       const link = document.createElement("a");
       link.href = url;
       link.download = "frovely-data.json";
       link.click();
       URL.revokeObjectURL(url);
-      setSupportMessage(t.dataExportReady ?? "Your data export is ready.");
+      setSupportMessage(t.dataExportReady);
     } catch (error) {
       setSupportMessage(error.message || t.apiErrorMessage);
     }
   };
 
-  const removeMyAccount = async () => {
-    if (!window.confirm(t.deleteAccountConfirm ?? "Delete your Frovely account and all of its data? This cannot be undone.")) return;
+  const handleLogout = async () => {
+    setLogoutConfirmationOpen(false);
     try {
-      await deleteAccount?.();
+      await logout?.();
     } catch (error) {
-      setSupportMessage(error.message || t.apiErrorMessage);
+      setSupportMessage(error.message || t.logoutFailed);
     }
   };
 
-  const openSupportEmail = () => {
-    window.location.href = `mailto:support@frovely.app?subject=${encodeURIComponent(t.supportSection)}`;
+  const confirmProfileSave = async () => {
+    if (!pendingProfileSave) return;
+    try {
+      await saveProfile(pendingProfileSave);
+    } catch {
+      // The localized error is already displayed by saveProfile.
+    } finally {
+      setPendingProfileSave(null);
+    }
   };
 
   return (
-    <div className="mobile-page min-h-[100svh] overflow-x-hidden bg-[#F8F9FB] px-4 pt-5 text-slate-900 sm:px-5 lg:h-full lg:min-h-0 lg:overflow-hidden lg:px-0 lg:pb-0 lg:pt-0">
-      <section className="mx-auto flex min-h-full min-w-0 max-w-xl flex-col justify-start gap-3 lg:grid lg:h-full lg:max-w-none lg:grid-cols-[minmax(230px,0.82fr)_minmax(0,1.7fr)] lg:items-stretch lg:gap-4 lg:justify-center xl:grid-cols-[minmax(300px,0.95fr)_minmax(0,1.9fr)] xl:gap-5">
-        <header className="shrink-0 rounded-[28px] border border-slate-100 bg-white p-4 text-left shadow-[0_18px_42px_-32px_rgba(15,23,42,0.35)] sm:p-5 lg:flex lg:min-h-0 lg:flex-col lg:justify-between lg:overflow-hidden lg:p-5 xl:p-6">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">{t.subscriptionDetails}</p>
-            {appPlan ? (
-              <div className="mt-4 grid gap-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-2xl font-black tracking-tight text-slate-950">{appPlanName}</p>
-                    <p className="mt-1 text-sm font-semibold text-slate-500">{t.currentPlan}</p>
+    <div className="mobile-page min-h-[100svh] w-full min-w-0 bg-[#F8F9FB] px-4 pb-8 pt-5 text-slate-900 sm:px-6 lg:min-h-0 lg:px-0 lg:pb-10 lg:pt-0">
+      <main className="mx-auto max-w-5xl">
+        <section className="relative overflow-visible rounded-[32px] border border-slate-100 bg-white p-5 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.55)] sm:p-7 lg:p-8">
+          <header className="flex items-center justify-between">
+            <IconButton label={t.dashboard} onClick={onBack} className="text-slate-400">
+              <ChevronRight className="rotate-180" size={18} />
+            </IconButton>
+            <h1 className="text-base font-black text-slate-700">{t.profile}</h1>
+            <div className="relative">
+              <IconButton label={t.profileSettings} aria-haspopup="menu" aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}>
+                <Settings size={18} />
+              </IconButton>
+              {settingsOpen && (
+                <div className="floating-menu-enter absolute right-0 top-12 z-40 max-h-[calc(100dvh-13rem)] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto overscroll-contain rounded-[28px] border border-slate-100 bg-white p-4 text-left shadow-[0_24px_60px_-30px_rgba(15,23,42,0.35)] sm:max-h-[calc(100dvh-7rem)]">
+                  <MenuAction icon={Edit3} label={t.editProfile} onClick={openEdit} />
+                  <MenuAction icon={Camera} label={t.editProfilePhoto} onClick={() => { setSettingsOpen(false); setAvatarModalOpen(true); }} />
+                  {appPlan && <MenuAction icon={Sparkles} label={t.cancelPlan} tone="danger" onClick={() => { setSettingsOpen(false); setSupportModalOpen(true); }} />}
+                  {onOpenAdmin && <MenuAction icon={ShieldCheck} label={t.adminPanel} onClick={() => { setSettingsOpen(false); onOpenAdmin(); }} />}
+                  <div className="border-t border-slate-100 py-3">
+                    <label className="flex items-center gap-3">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#F4F0FF] text-[#7047EB]">
+                        <Globe2 size={18} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-black text-slate-800">{t.language}</span>
+                      </span>
+                      <select aria-label={t.language} value={language} onChange={(event) => setLanguage(event.target.value)} className="h-10 rounded-2xl border border-[#7047EB]/15 bg-[#F4F0FF] px-3 text-sm font-black uppercase text-[#7047EB] outline-none focus:ring-4 focus:ring-[#7047EB]/10">
+                        {SUPPORTED_LANGUAGES.map((option) => <option key={option} value={option}>{option.toUpperCase()}</option>)}
+                      </select>
+                    </label>
                   </div>
-                  <span className="shrink-0 rounded-full bg-[#F4F0FF] px-3 py-1.5 text-xs font-black uppercase text-[#7047EB]">{appPlanStatus}</span>
+                  <div className="border-t border-slate-100 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#F4F0FF] text-[#7047EB]">
+                        <Bell size={18} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-black text-slate-800">{emailRemindersLabel}</span>
+                      </span>
+                      <button type="button" role="switch" aria-label={emailRemindersLabel} aria-checked={form.reminderEmailEnabled} onClick={toggleReminderEmails} disabled={savingReminder} className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:cursor-wait ${savingReminder ? "bg-slate-400" : form.reminderEmailEnabled ? "bg-[#7047EB]" : "bg-slate-300"}`}>
+                        <span className={`absolute top-1 grid size-5 place-items-center rounded-full bg-white shadow-sm transition ${form.reminderEmailEnabled ? "left-6" : "left-1"}`} />
+                      </button>
+                    </div>
+                  </div>
+                  <MenuAction icon={KeyRound} label={t.forgotPassword} onClick={() => { setSettingsOpen(false); setForgotPasswordConfirmationOpen(true); }} />
+                  <MenuAction icon={Headphones} label={t.contactSupport} onClick={() => { setSettingsOpen(false); setSupportModalOpen(true); }} />
+                  <MenuAction icon={Download} label={t.exportMyData} onClick={() => { setSettingsOpen(false); downloadMyData(); }} />
+                  <MenuAction icon={LogOut} label={t.logout} tone="danger" onClick={() => { setSettingsOpen(false); setLogoutConfirmationOpen(true); }} />
                 </div>
-                <div className="rounded-[24px] bg-[#F4F0FF] p-4">
-                  <p className="text-3xl font-black text-[#7047EB]">
-                    {appPlanPrice !== null ? formatMoney(appPlanPrice, form.preferredCurrency) : "-"}
-                    <span className="ml-1 text-sm font-black text-[#7047EB]/60">/ {t[cycleLabels[String(appPlanCycle).toUpperCase()]] ?? appPlanCycle}</span>
-                  </p>
-                </div>
-                <div className="grid gap-3 text-sm font-semibold text-slate-500">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{t.nextPayment}</span>
-                    <span className="text-right font-black text-slate-900">{formatPlanDate(appPlanNextPayment)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{t.startedOn}</span>
-                    <span className="text-right font-black text-slate-900">{formatPlanDate(appPlanStartedAt)}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{t.paymentStatus}</span>
-                    <span className="text-right font-black text-slate-900">{appPlanStatus}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSupportModalOpen(true)}
-                  className="rounded-[16px] border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-black text-rose-600 transition hover:bg-rose-100 active:scale-[0.98]"
-                >
-                  {t.cancelPlan}
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 grid gap-3 sm:mt-4 sm:gap-3.5">
-                <div className="rounded-[24px] bg-[#F4F0FF] p-3.5 sm:p-4 lg:p-3 xl:p-4">
-                  <p className="text-xs font-black uppercase tracking-wide text-[#7047EB]/60">{t.currentPlan}</p>
-                  <p className="mt-1.5 text-2xl font-black text-slate-950">{t.freePlan}</p>
-                  <p className="mt-2 text-3xl font-black text-[#7047EB] lg:text-2xl xl:text-3xl">{formatMoney(0, form.preferredCurrency)}</p>
-                </div>
-                <div className="hidden gap-2 text-sm font-semibold text-slate-500 sm:grid sm:gap-2.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{t.paymentStatus}</span>
-                    <span className="text-right font-black text-slate-900">{t.noAppPlanTitle}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{t.nextPayment}</span>
-                    <span className="text-right font-black text-slate-900">{t.noPaymentScheduled}</span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>{t.cancelPlan}</span>
-                    <span className="text-right font-black text-slate-900">{t.noCancellationNeeded}</span>
-                  </div>
-                </div>
-                <p className="rounded-2xl bg-slate-50 p-3 text-sm font-semibold leading-relaxed text-slate-500 sm:p-4 lg:p-3 xl:p-4">{t.noAppPlanHelp}</p>
-              </div>
-            )}
-          </div>
-        </header>
+              )}
+            </div>
+          </header>
 
-        <section className="grid min-h-0 shrink gap-3 lg:h-full lg:grid-rows-[minmax(0,0.9fr)_minmax(0,0.75fr)_minmax(0,1fr)] lg:gap-4 xl:gap-5">
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] sm:p-3.5 lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
+          <div className="mt-8 grid place-items-center text-center">
+            <button type="button" aria-label={t.editProfilePhoto} title={t.editProfilePhoto} onClick={() => setAvatarModalOpen(true)} className="relative rounded-full focus:outline-none focus-visible:ring-4 focus-visible:ring-[#7047EB]/20">
+              <UserAvatar user={previewUser} className="size-28 border-4 border-white bg-[#7047EB] text-white shadow-[0_18px_34px_-20px_rgba(112,71,235,0.75)]" textClassName="text-4xl" />
+              <span className="absolute bottom-1 right-1 grid size-8 place-items-center rounded-full border-2 border-white bg-slate-950 text-white">
+                <Camera size={15} />
+              </span>
+            </button>
+            <div className="mt-5 flex max-w-full items-center justify-center gap-2">
+              <h2 className="min-w-0 break-words text-2xl font-black tracking-tight text-slate-950">{previewUser.name || t.fallbackUser}</h2>
+              <button type="button" aria-label={t.editProfile} title={t.editProfile} onClick={openEdit} className="grid size-8 shrink-0 place-items-center rounded-full text-[#7047EB] transition hover:bg-[#F4F0FF]">
+                <Edit3 size={18} />
+              </button>
+            </div>
+            <div className="mt-3 h-1.5 w-48 overflow-hidden rounded-full bg-[#F4F0FF]">
+              <div className="h-full rounded-full bg-[#7047EB]" style={{ width: `${completionPercent}%` }} />
+            </div>
+            <p className="mt-3 text-sm font-bold text-slate-400">{completionText}</p>
+          </div>
+
+          <div className="mt-6 rounded-[24px] bg-[#7047EB] p-4 text-white shadow-[0_18px_40px_-24px_rgba(112,71,235,0.75)] sm:flex sm:items-center sm:justify-between sm:gap-4">
+            <div className="min-w-0">
+              <p className="text-base font-black">{profileIsComplete ? t.profileCompleteTitle : t.profileCompletionTitle}</p>
+              <p className="mt-1 break-words text-sm font-semibold text-white/75">{profileIsComplete ? t.profileCompleteHelp : t.profileCompletionHelp}</p>
+            </div>
+            <button type="button" onClick={openEdit} className="mt-4 rounded-2xl bg-white px-4 py-2.5 text-sm font-black text-[#7047EB] transition hover:bg-[#F4F0FF] active:scale-[0.98] sm:mt-0">
+              {profileIsComplete ? t.editProfile : t.profileCompletionAction}
+            </button>
+          </div>
+
+          <section className="mt-7">
+            <h3 className="text-lg font-black text-slate-950">{t.profileAccountSection}</h3>
             {isEditing ? (
-              <form className="grid gap-3 xl:grid-cols-2 xl:gap-4" onSubmit={handleProfileSubmit} noValidate>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</label>
-                  <input
-                    aria-label={t.fullName}
-                    aria-invalid={Boolean(profileError === t.nameRequired)}
-                    value={form.name}
-                    onChange={(event) => change("name", event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.currencyQuestion}</label>
-                  <select
-                    aria-label={t.currencyQuestion}
-                    value={form.preferredCurrency}
-                    onChange={(event) => change("preferredCurrency", event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
-                  >
+              <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleProfileSubmit} noValidate>
+                <Field label={t.fullName}>
+                  <input aria-label={t.fullName} aria-invalid={Boolean(profileError === t.nameRequired)} autoComplete="name" value={form.name} onChange={(event) => change("name", event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold normal-case tracking-normal text-slate-900 outline-none focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] sm:text-sm" />
+                </Field>
+                <Field label={t.emailAddress}>
+                  <input aria-label={t.emailAddress} aria-invalid={Boolean(profileError === t.invalidEmail)} autoComplete="email" type="email" value={form.email} onChange={(event) => change("email", event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold normal-case tracking-normal text-slate-900 outline-none focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] sm:text-sm" />
+                </Field>
+                <Field label={t.currencyQuestion}>
+                  <select aria-label={t.currencyQuestion} value={form.preferredCurrency} onChange={(event) => change("preferredCurrency", event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold normal-case tracking-normal text-slate-900 outline-none focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] sm:text-sm">
                     {SUPPORTED_CURRENCIES.map((option) => <option key={option} value={option}>{option} - {getCurrencyLabel(option, language)}</option>)}
                   </select>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{timeZoneLabel}</label>
-                  <input
-                    aria-label={timeZoneLabel}
-                    value={form.timeZone}
-                    onChange={(event) => change("timeZone", event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</label>
-                  <input
-                    aria-label={t.emailAddress}
-                    aria-invalid={Boolean(profileError === t.invalidEmail)}
-                    type="email"
-                    value={form.email}
-                    onChange={(event) => change("email", event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-900 outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] lg:py-3"
-                  />
-                </div>
-                {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700 xl:col-span-2">{profileError}</p>}
-                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 xl:col-span-2">{t.profileSaved}</p>}
-                <div className="grid grid-cols-2 gap-3 xl:col-span-2">
-                  <button
-                    type="button"
-                    onClick={cancelEditing}
-                    disabled={saving}
-                    className="rounded-[16px] border border-slate-200 bg-white px-5 py-3.5 text-sm font-black text-slate-600 transition hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 lg:rounded-[18px] lg:py-4"
-                  >
-                    {t.cancel}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="rounded-[16px] bg-[#7047EB] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 lg:rounded-[18px] lg:py-4"
-                  >
-                    {saving ? t.loading : t.save}
-                  </button>
+                </Field>
+                <Field label={timeZoneLabel}>
+                  <input aria-label={timeZoneLabel} autoComplete="off" value={form.timeZone} onChange={(event) => change("timeZone", event.target.value)} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base font-bold normal-case tracking-normal text-slate-900 outline-none focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#F4F0FF] sm:text-sm" />
+                </Field>
+                {profileError && <p role="alert" className="rounded-2xl bg-rose-50 p-3 text-sm font-bold text-rose-700 sm:col-span-2">{profileError}</p>}
+                <div className="grid grid-cols-2 gap-3 pt-1 sm:col-span-2">
+                  <button type="button" onClick={() => { resetDraft(); setIsEditing(false); }} disabled={saving} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50">{t.cancel}</button>
+                  <button type="submit" disabled={saving} className="rounded-2xl bg-[#7047EB] px-4 py-3 text-sm font-black text-white transition hover:bg-[#6338DF]">{saving ? t.loading : t.save}</button>
                 </div>
               </form>
             ) : (
-              <div className="grid gap-3 xl:grid-cols-2 xl:gap-4">
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.fullName}</p>
-                  <p className="mt-1 break-words text-sm font-black text-slate-900 lg:text-lg">{form.name || "-"}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.currencyQuestion}</p>
-                  <p className="mt-1 text-sm font-black text-slate-900 lg:text-lg">{form.preferredCurrency}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{timeZoneLabel}</p>
-                  <p className="mt-1 break-all text-sm font-black text-slate-900 lg:text-lg">{form.timeZone}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-2.5 sm:px-4 sm:py-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{t.emailAddress}</p>
-                  <p className="mt-1 break-all text-sm font-black text-slate-900 lg:text-lg">{form.email || "-"}</p>
-                </div>
-                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 xl:col-span-2">{t.profileSaved}</p>}
-                <button
-                  type="button"
-                  onClick={startEditing}
-                  className="rounded-[16px] bg-[#7047EB] px-5 py-3.5 text-sm font-black text-white transition hover:bg-[#6338DF] active:scale-[0.98] xl:col-span-2 lg:rounded-[18px] lg:py-4"
-                >
-                  {editProfileLabel}
-                </button>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <ProfileInfoCard icon={UserRound} label={t.fullName} value={form.name} />
+                <ProfileInfoCard icon={Mail} label={t.emailAddress} value={<EmailValue email={form.email} />} valueWrap="anywhere" />
+                <ProfileInfoCard icon={Sparkles} label={t.currentPlan} value={appPlan ? appPlanName : accessLabel} />
+                <ProfileInfoCard icon={Globe2} label={timeZoneLabel} value={form.timeZone} />
+                {appPlan && (
+                  <div className="rounded-2xl border border-[#7047EB]/10 bg-[#F4F0FF] p-4 md:col-span-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-black text-slate-950">{appPlanName}</p>
+                        {appPlanPrice !== null && <p className="mt-1 text-xs font-bold text-slate-500">{formatMoney(appPlanPrice, form.preferredCurrency)}</p>}
+                        <p className="mt-1 text-xs font-semibold text-slate-500">{t[cycleLabels[String(appPlanCycle).toUpperCase()]] ?? appPlanCycle}</p>
+                        {appPlanNextPayment && <p className="mt-1 text-xs font-semibold text-slate-500">{t.nextPayment}: {formatPlanDate(appPlanNextPayment)}</p>}
+                      </div>
+                      <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-black uppercase text-[#7047EB]">{appPlanStatus}</span>
+                    </div>
+                  </div>
+                )}
+                {!appPlan && <p className="rounded-2xl bg-[#F4F0FF] p-4 text-sm font-bold leading-relaxed text-[#7047EB] md:col-span-2">{t.profileBetaAccessHelp}</p>}
+                {saved && <p role="status" className="rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700 md:col-span-2">{t.profileSaved}</p>}
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
-            <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.preferences}</p>
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-black text-slate-900">{t.language}</p>
-                <p className="mt-0.5 text-xs font-semibold text-slate-500">{t.interfaceLanguage}</p>
-              </div>
-              <div className="relative ml-auto w-24 shrink-0 basis-full sm:w-36 sm:basis-auto">
-                <i className="ph ph-translate pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-base text-[#7047EB]" />
-                <select
-                  aria-label={t.language}
-                  value={language}
-                  onChange={(event) => setLanguage(event.target.value)}
-                  className="h-12 w-full appearance-none rounded-2xl border border-[#7047EB]/10 bg-[#F4F0FF] pl-10 pr-9 text-sm font-black uppercase text-[#7047EB] shadow-[0_10px_24px_-20px_rgba(112,71,235,0.9)] outline-none transition hover:bg-white focus:border-[#7047EB]/40 focus:bg-white focus:ring-4 focus:ring-[#7047EB]/10"
-                >
-                  {SUPPORTED_LANGUAGES.map((option) => (
-                    <option key={option} value={option}>{option.toUpperCase()}</option>
-                  ))}
-                </select>
-                <i className="ph-bold ph-caret-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#7047EB]" />
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-[22px] border border-slate-100 bg-white p-3.5 shadow-[0_12px_34px_-28px_rgba(15,23,42,0.3)] lg:flex lg:min-h-0 lg:flex-col lg:justify-center lg:overflow-hidden lg:rounded-[28px] lg:p-5 xl:p-6">
-            <p className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-400 lg:mb-4">{t.supportSection}</p>
-            <div className="grid gap-2.5 xl:grid-cols-3 xl:gap-3">
-              {onOpenAdmin && (
-                <button
-                  type="button"
-                  onClick={onOpenAdmin}
-                  className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-[#7047EB]/15 bg-[#F4F0FF] px-3.5 py-3 text-left transition hover:border-[#7047EB]/30 hover:bg-white"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-black text-[#7047EB]">{t.adminPanel}</span>
-                    <span className="block truncate text-xs font-semibold text-[#7047EB]/70">{t.manageUsers}</span>
-                  </span>
-                  <i className="ph-bold ph-shield-check shrink-0 text-lg text-[#7047EB]" />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setSupportModalOpen(true)}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-sm font-black text-slate-900">{t.contactSupport}</span>
-                  <span className="block truncate text-xs font-semibold text-slate-500">{t.supportHelp}</span>
-                </span>
-                <i className="ph-bold ph-lifebuoy shrink-0 text-lg text-[#7047EB]" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setForgotPasswordConfirmationOpen(true)}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-sm font-black text-slate-900">{t.forgotPassword}</span>
-                  <span className="block truncate text-xs font-semibold text-slate-500">{t.forgotPasswordProfileHelp}</span>
-                </span>
-                <i className="ph-bold ph-key shrink-0 text-lg text-[#7047EB]" />
-              </button>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={form.reminderEmailEnabled}
-                onClick={toggleReminderEmails}
-                disabled={savingReminder}
-                className={`flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF] disabled:cursor-wait ${savingReminder ? "bg-slate-200 text-slate-500 shadow-inner" : ""}`}
-              >
-                <span className="min-w-0">
-                  <span className="block text-sm font-black text-slate-900">{emailRemindersLabel}</span>
-                  <span className="block truncate text-xs font-semibold text-slate-500">{form.reminderEmailEnabled ? t.enabled : t.disabled}</span>
-                </span>
-                <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${savingReminder ? "bg-slate-400" : form.reminderEmailEnabled ? "bg-[#7047EB]" : "bg-slate-300"}`}>
-                  <span className={`absolute top-1 grid size-5 place-items-center rounded-full bg-white shadow-sm transition ${form.reminderEmailEnabled ? "left-6" : "left-1"}`} />
-                </span>
-              </button>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 xl:col-span-3">
-                <p className="text-sm font-black text-slate-900">{reminderDaysLabel}</p>
-                <div className="mt-2 flex gap-2" role="group" aria-label={reminderDaysLabel}>
-                  {[7, 3, 1].map((day) => {
-                    const isSelected = form.reminderDaysBefore.includes(day);
-                    return (
-                      <button
-                        key={day}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => toggleReminderDay(day)}
-                        className={`h-9 min-w-12 rounded-xl px-3 text-sm font-black transition ${isSelected ? "bg-[#7047EB] text-white shadow-[0_8px_18px_-12px_rgba(112,71,235,0.9)]" : "border border-slate-200 bg-white text-slate-600 hover:border-[#7047EB]/30"}`}
-                      >
-                        {day}d
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={downloadMyData}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3.5 py-3 text-left transition hover:border-[#7047EB]/20 hover:bg-[#F4F0FF]"
-              >
-                <span className="min-w-0">
-                  <span className="block text-sm font-black text-slate-900">{t.exportMyData ?? "Export my data"}</span>
-                  <span className="block truncate text-xs font-semibold text-slate-500">{t.exportMyDataHelp ?? "Download your account data."}</span>
-                </span>
-                <i className="ph-bold ph-download-simple shrink-0 text-lg text-[#7047EB]" />
-              </button>
-              <button
-                type="button"
-                onClick={removeMyAccount}
-                className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-rose-50 px-3.5 py-3 text-left transition hover:bg-rose-100"
-              >
-                <span className="min-w-0">
-                  <span className="block text-sm font-black text-rose-700">{t.deleteMyAccount ?? "Delete my account"}</span>
-                  <span className="block truncate text-xs font-semibold text-rose-600">{t.deleteMyAccountHelp ?? "Permanently remove all account data."}</span>
-                </span>
-                <i className="ph-bold ph-trash shrink-0 text-lg text-rose-600" />
-              </button>
-            </div>
-            {supportMessage && <p role="status" className="mt-2.5 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{supportMessage}</p>}
-          </div>
-
+          {supportMessage && <p role="status" className="mt-5 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{supportMessage}</p>}
         </section>
-      </section>
-      {avatarModalOpen && (
-        <AvatarPhotoModal
-          t={t}
-          user={previewUser}
-          value={form.avatarUrl}
-          saving={saving}
-          onClose={() => setAvatarModalOpen(false)}
-          onSave={saveAvatarFromModal}
-          onRemove={() => saveAvatarFromModal("")}
-        />
-      )}
-      {pendingProfileSave && (
-        <ConfirmationModal
-          title={t.profileConfirmSaveTitle}
-          message={t.profileConfirmSaveMessage}
-          cancelLabel={t.cancel}
-          confirmLabel={t.profileConfirmSaveAction}
-          loading={saving}
-          onCancel={() => setPendingProfileSave(null)}
-          onConfirm={confirmProfileSave}
-        />
-      )}
-      {supportModalOpen && (
-        <ConfirmationModal
-          title={t.supportModalTitle}
-          message={t.supportModalMessage}
-          cancelLabel={t.cancel}
-          confirmLabel={t.supportEmailAction}
-          onCancel={() => setSupportModalOpen(false)}
-          onConfirm={openSupportEmail}
-        />
-      )}
-      {forgotPasswordConfirmationOpen && (
-        <ConfirmationModal
-          title={t.forgotPasswordConfirmTitle}
-          message={t.forgotPasswordConfirmMessage.replace("{email}", user.email)}
-          cancelLabel={t.cancel}
-          confirmLabel={t.sendResetLink}
-          onCancel={() => setForgotPasswordConfirmationOpen(false)}
-          onConfirm={requestPasswordReset}
-        />
-      )}
+      </main>
+      {avatarModalOpen && <AvatarPhotoModal t={t} user={previewUser} value={form.avatarUrl} saving={saving} onClose={() => setAvatarModalOpen(false)} onUpload={handleAvatarUpload} onRemove={removeAvatar} />}
+      {pendingProfileSave && <ConfirmationModal title={t.profileConfirmSaveTitle} message={t.profileConfirmSaveMessage} cancelLabel={t.cancel} confirmLabel={t.profileConfirmSaveAction} loading={saving} onCancel={() => setPendingProfileSave(null)} onConfirm={confirmProfileSave} />}
+      {supportModalOpen && <ConfirmationModal title={t.supportModalTitle} message={t.supportModalMessage} cancelLabel={t.cancel} confirmLabel={t.supportEmailAction} onCancel={() => setSupportModalOpen(false)} onConfirm={() => { window.location.href = `mailto:support@frovely.app?subject=${encodeURIComponent(t.supportSection)}`; }} />}
+      {forgotPasswordConfirmationOpen && <ConfirmationModal title={t.forgotPasswordConfirmTitle} message={t.forgotPasswordConfirmMessage.replace("{email}", user.email)} cancelLabel={t.cancel} confirmLabel={t.sendResetLink} onCancel={() => setForgotPasswordConfirmationOpen(false)} onConfirm={requestPasswordReset} />}
+      {reminderDisableConfirmationOpen && <ConfirmationModal title={t.reminderDisableConfirmTitle} message={t.reminderDisableConfirmMessage} cancelLabel={t.cancel} confirmLabel={t.reminderDisableConfirmAction} loading={savingReminder} onCancel={() => setReminderDisableConfirmationOpen(false)} onConfirm={async () => { await setReminderEmails(false); setReminderDisableConfirmationOpen(false); }} />}
+      {logoutConfirmationOpen && <ConfirmationModal title={t.logoutConfirmTitle} message={t.logoutConfirmMessage} cancelLabel={t.cancel} confirmLabel={t.logoutConfirmAction} onCancel={() => setLogoutConfirmationOpen(false)} onConfirm={handleLogout} />}
     </div>
   );
 }

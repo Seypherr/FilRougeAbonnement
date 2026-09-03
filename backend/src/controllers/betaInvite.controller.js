@@ -24,6 +24,12 @@ function publicInvite(invite) {
   };
 }
 
+function csvCell(value) {
+  const text = String(value ?? "");
+  const neutralized = /^[=+\-@]/.test(text) ? `'${text}` : text;
+  return JSON.stringify(neutralized);
+}
+
 export const listBetaInvites = asyncHandler(async (_req, res) => {
   const invites = await prisma.betaInvite.findMany({
     select: {
@@ -105,11 +111,11 @@ export const exportBetaInvites = asyncHandler(async (_req, res) => {
   const rows = ["email,status,created_at,expires_at,used_at"];
   for (const invite of invites) {
     rows.push([
-      JSON.stringify(invite.email),
-      inviteStatus(invite),
-      invite.createdAt.toISOString(),
-      invite.expiresAt.toISOString(),
-      invite.usedAt?.toISOString() ?? ""
+      csvCell(invite.email),
+      csvCell(inviteStatus(invite)),
+      csvCell(invite.createdAt.toISOString()),
+      csvCell(invite.expiresAt.toISOString()),
+      csvCell(invite.usedAt?.toISOString() ?? "")
     ].join(","));
   }
 

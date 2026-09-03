@@ -41,11 +41,12 @@ export function App() {
   const [modalState, setModalState] = useState({ open: false, subscription: null });
   const [onboardingState, setOnboardingState] = useState({ key: "", completed: false });
   const t = getDictionary(language);
-  const { user, completeOnboarding, deleteAccount, exportData, forgotPassword, loading, logout, resendVerification, updateProfile, verificationDelivery } = useAuth();
+  const { user, completeOnboarding, exportData, forgotPassword, loading, logout, resendVerification, updateProfile, uploadAvatar, verificationDelivery } = useAuth();
   const subscriptionState = useSubscriptions("", Boolean(user && user.emailVerified !== false));
   const onboardingStorageKey = user ? `frovely:onboarding:v2:${user.id ?? user.email}` : "";
 
   const legalPath = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  const standaloneAuthPath = ["reset-password", "verify-email"].includes(legalPath);
   if (["privacy", "terms", "legal"].includes(legalPath)) {
     return <LegalPage kind={legalPath} language={language} />;
   }
@@ -80,8 +81,8 @@ export function App() {
       return;
     }
 
-    setOnboardingState({ key: onboardingStorageKey, completed: hasCompletedOnboarding(onboardingStorageKey) });
-  }, [onboardingStorageKey]);
+    setOnboardingState({ key: onboardingStorageKey, completed: Boolean(user?.onboardingCompletedAt) || hasCompletedOnboarding(onboardingStorageKey) });
+  }, [onboardingStorageKey, user?.onboardingCompletedAt]);
 
   const notify = (message, type = "success") => {
     setToast({ message, type });
@@ -124,6 +125,10 @@ export function App() {
     return <AuthPage t={t} language={language} setLanguage={setLanguage} />;
   }
 
+  if (standaloneAuthPath) {
+    return <AuthPage t={t} language={language} setLanguage={setLanguage} />;
+  }
+
   if (user.emailVerified === false) {
     return (
       <EmailVerificationRequiredPage
@@ -154,7 +159,7 @@ export function App() {
 
   const onboardingCompleted = onboardingState.key === onboardingStorageKey
     ? onboardingState.completed
-    : hasCompletedOnboarding(onboardingStorageKey);
+    : Boolean(user?.onboardingCompletedAt) || hasCompletedOnboarding(onboardingStorageKey);
 
   if (!onboardingCompleted) {
     return <OnboardingCarousel t={t} language={language} onComplete={finishOnboarding} />;
@@ -237,9 +242,12 @@ export function App() {
             setLanguage={setLanguage}
             forgotPassword={forgotPassword}
             updateProfile={updateProfile}
+            uploadAvatar={uploadAvatar}
             currency={user.preferredCurrency}
             exportData={exportData}
-            deleteAccount={deleteAccount}
+            logout={logout}
+            globalModalOpen={modalState.open}
+            onBack={() => navigateTab("dashboard")}
             onOpenAdmin={user.role === "ADMIN" ? () => navigateTab("admin") : undefined}
           />
         )}

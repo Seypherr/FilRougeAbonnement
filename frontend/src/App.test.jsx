@@ -97,6 +97,10 @@ function getLastButtonByName(name) {
   return buttons[buttons.length - 1];
 }
 
+function openProfileSettings() {
+  fireEvent.click(screen.getByRole("button", { name: "Paramètres du profil" }));
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   window.localStorage.setItem("frovely:onboarding:v1:user-1", "completed");
@@ -194,6 +198,20 @@ describe("App", () => {
     expect(screen.getByText("Tableau de bord")).toBeInTheDocument();
   });
 
+  it("skips onboarding after the account already completed it once", async () => {
+    window.localStorage.clear();
+    useAuth.mockReturnValue({
+      user: { ...user, onboardingCompletedAt: "2026-09-03T00:00:00.000Z" },
+      loading: false,
+      logout: vi.fn()
+    });
+
+    render(<App />);
+
+    expect(screen.queryByText("Qu'est-ce que tu veux mieux maîtriser en premier ?")).not.toBeInTheDocument();
+    expect(screen.getByText("Tableau de bord")).toBeInTheDocument();
+  });
+
   it("requires privacy acceptance before registration without sending questionnaire fields", async () => {
     const register = vi.fn().mockResolvedValue({});
     useAuth.mockReturnValue({
@@ -269,6 +287,26 @@ describe("App", () => {
 
     await waitFor(() => expect(resendVerification).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByRole("link", { name: /Ouvrir le lien de vérification/ })).toHaveAttribute("href", "http://localhost:5173/verify-email?token=verify123"));
+  });
+
+  it("verifies email from the action link even when the user is already connected", async () => {
+    window.history.pushState({}, "", "/verify-email?token=verify123");
+    const verifyEmail = vi.fn().mockImplementation(async () => {
+      authMock.user = { ...user, emailVerified: true };
+    });
+    const authMock = {
+      user: { ...user, emailVerified: false },
+      loading: false,
+      logout: vi.fn(),
+      verifyEmail
+    };
+    useAuth.mockImplementation(() => authMock);
+
+    render(<App />);
+
+    await waitFor(() => expect(verifyEmail).toHaveBeenCalledWith({ token: "verify123" }));
+    expect(window.location.pathname).toBe("/");
+    expect(screen.queryByText("Un lien de vérification a été envoyé")).not.toBeInTheDocument();
   });
 
   it("cycles the login page from French to English and Spanish", () => {
@@ -1058,13 +1096,64 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
-    const emailSwitch = await screen.findByRole("switch", { name: /Rappels par email/i });
+    await screen.findByRole("button", { name: "Modifier le profil" });
+    openProfileSettings();
+    const emailSwitch = screen.getByRole("switch", { name: /Rappels par email/i });
     expect(emailSwitch).toHaveAttribute("aria-checked", "false");
 
     fireEvent.click(emailSwitch);
 
     await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ reminderEmailEnabled: true }));
     expect(emailSwitch).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("asks for confirmation only before turning email reminders off", async () => {
+    const updateProfile = vi.fn().mockResolvedValue({});
+    useAuth.mockReturnValue({
+      user: { ...user, reminderEmailEnabled: true, reminderDaysBefore: [7, 3, 1] },
+      loading: false,
+      logout: vi.fn(),
+      updateProfile
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await screen.findByRole("button", { name: "Modifier le profil" });
+    openProfileSettings();
+
+    expect(screen.queryByRole("button", { name: "7d" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "3d" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "1d" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("switch", { name: /Rappels par email/i }));
+    expect(screen.getByRole("dialog", { name: "Désactiver les rappels ?" })).toBeInTheDocument();
+    expect(updateProfile).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Désactiver" }));
+    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ reminderEmailEnabled: false }));
+  });
+
+  it("offers logout from profile settings instead of account deletion", async () => {
+    const logout = vi.fn().mockResolvedValue();
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await screen.findByRole("button", { name: "Modifier le profil" });
+    openProfileSettings();
+
+    expect(screen.queryByRole("button", { name: "Supprimer mon compte" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Déconnexion" }));
+    const logoutDialog = screen.getByRole("dialog", { name: "Confirmer la déconnexion" });
+    fireEvent.click(within(logoutDialog).getByRole("button", { name: "Se déconnecter" }));
+
+    await waitFor(() => expect(logout).toHaveBeenCalledTimes(1));
   });
 
   it("requests a password reset from the profile assistance section", async () => {
@@ -1082,6 +1171,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
     await screen.findByRole("button", { name: "Modifier le profil" });
+    openProfileSettings();
     fireEvent.click(screen.getByRole("button", { name: /Mot de passe oublié/i }));
     const resetDialog = screen.getByRole("dialog", { name: "Réinitialiser le mot de passe" });
     fireEvent.click(within(resetDialog).getByRole("button", { name: "Envoyer le lien" }));
@@ -1101,8 +1191,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
     await screen.findByRole("button", { name: "Modifier le profil" });
-    expect(screen.getAllByText("Aucun plan actif").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Votre compte n'a pas encore d'abonnement actif à l'application.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Plan gratuit").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Les fonctionnalités Premium sont incluses pendant la bêta privée.").length).toBeGreaterThan(0);
   });
 
   it("shows active app plan details from the profile plans tab", async () => {
@@ -1129,7 +1219,29 @@ describe("App", () => {
     expect(screen.getAllByText("Premium").length).toBeGreaterThan(0);
     expect(screen.getByText("9,99 €")).toBeInTheDocument();
     expect(screen.getAllByText(/20 juillet 2026/).length).toBeGreaterThan(0);
+    openProfileSettings();
     expect(screen.getByRole("button", { name: "Résilier" })).toBeInTheDocument();
+  });
+
+  it("opens a modern file-based avatar import instead of an avatar URL field", async () => {
+    useAuth.mockReturnValue({
+      user,
+      loading: false,
+      logout: vi.fn(),
+      uploadAvatar: vi.fn()
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Profil" }));
+
+    await screen.findByRole("button", { name: "Modifier la photo de profil" });
+    fireEvent.click(screen.getByRole("button", { name: "Modifier la photo de profil" }));
+
+    expect(screen.getByRole("dialog", { name: "Photo de profil" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Choisir une photo")).toHaveAttribute("type", "file");
+    expect(screen.getByText("Choisir une photo")).toBeInTheDocument();
+    expect(screen.getByText("JPG, PNG ou WebP. 300 x 300 px min. 2 Mo max.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("URL HTTPS de l'avatar")).not.toBeInTheDocument();
   });
 
   it("updates profile name and email without exposing an avatar URL field", async () => {
@@ -1164,8 +1276,7 @@ describe("App", () => {
     await waitFor(() => {
       expect(updateProfile).toHaveBeenCalledWith({
         name: "Ethan Updated",
-        email: "ethan.updated@test.local",
-        avatarUrl: null
+        email: "ethan.updated@test.local"
       });
     });
   });
@@ -1470,15 +1581,14 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "Profil" }));
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Modifier le profil" })).toBeInTheDocument());
+    openProfileSettings();
     fireEvent.change(screen.getByLabelText("Langue"), { target: { value: "en" } });
 
-    expect(screen.getByText("Interface language")).toBeInTheDocument();
-    expect(screen.getByText("Interface language")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Profile settings" })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Language"), { target: { value: "es" } });
 
-    expect(screen.getByText("Idioma de la interfaz")).toBeInTheDocument();
-    expect(screen.getByText("Idioma de la interfaz")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ajustes del perfil" })).toBeInTheDocument();
   });
 
   it("shows clear admin empty states", async () => {

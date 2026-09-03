@@ -23,14 +23,15 @@ function buildFilterQuery(filters) {
   return params.toString() ? `?${params.toString()}` : "";
 }
 
-function getRenewalLabel(subscription, t) {
+export function getRenewalLabel(subscription, t) {
   if (subscription.status === "ARCHIVED") return t.archived;
   if (subscription.status === "INACTIVE") return t.billingSuspended;
   const now = new Date();
   const date = parseCalendarDate(subscription.renewalDate);
   if (!date) return "-";
   const diff = Math.ceil((date.setHours(0, 0, 0, 0) - now.setHours(0, 0, 0, 0)) / 86400000);
-  if (diff <= 1) return t.renewsTomorrow;
+  if (diff <= 0) return t.today;
+  if (diff === 1) return t.renewsTomorrow;
   return t.renewsInDays.replace("{count}", diff);
 }
 

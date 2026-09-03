@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { SUPPORTED_LANGUAGES } from "../i18n/dictionaries.js";
 
+const emailVerificationTokensInFlight = new Set();
+
 function isStrictEmail(value) {
   const email = value.trim().toLowerCase();
   if (email.length > 254 || email.includes("..")) return false;
@@ -55,11 +57,19 @@ export function AuthPage({ t, language, setLanguage }) {
         return;
       }
 
+      if (emailVerificationTokensInFlight.has(token)) {
+        return;
+      }
+
+      emailVerificationTokensInFlight.add(token);
+
       try {
         setLoading(true);
         await verifyEmail({ token });
+        window.history.replaceState({}, "", "/");
         setMessage(t.emailVerifiedSuccess);
       } catch (err) {
+        emailVerificationTokensInFlight.delete(token);
         setError(err.message || t.invalidVerificationLink);
       } finally {
         setLoading(false);
@@ -198,6 +208,7 @@ export function AuthPage({ t, language, setLanguage }) {
                 <input
                   type="email"
                   value={form.email}
+                  autoComplete={isRegisterMode ? "email" : "username"}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
                   className={`block w-full rounded-full border-2 py-3.5 pl-11 pr-11 text-sm font-medium text-[#1B1D28] placeholder-[#8E95A9] outline-none transition-all ${emailInvalid ? "border-[#FF3E5D]/30 bg-[#FFF0F3] focus:border-[#FF3E5D] focus:ring-4 focus:ring-[#FF3E5D]/20" : "border-[#EAECEF] bg-[#F8F9FB] focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#7047EB]/20"}`}
                   placeholder={t.emailPlaceholder}
@@ -228,6 +239,7 @@ export function AuthPage({ t, language, setLanguage }) {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={form.password}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
                   onChange={(event) => setForm({ ...form, password: event.target.value })}
                   className="block w-full rounded-full border-2 border-[#EAECEF] bg-[#F8F9FB] py-3.5 pl-11 pr-12 text-sm font-medium text-[#1B1D28] outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#7047EB]/20"
                   placeholder={t.passwordPlaceholder}
@@ -254,6 +266,7 @@ export function AuthPage({ t, language, setLanguage }) {
                 <input
                   type={showPassword ? "text" : "password"}
                   value={form.confirmPassword}
+                  autoComplete="new-password"
                   onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
                   className="block w-full rounded-full border-2 border-[#EAECEF] bg-[#F8F9FB] py-3.5 pl-11 pr-12 text-sm font-medium text-[#1B1D28] outline-none transition-all focus:border-[#7047EB] focus:bg-white focus:ring-4 focus:ring-[#7047EB]/20"
                   placeholder={t.confirmPasswordPlaceholder}

@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
+import fs from "fs/promises";
+import path from "path";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 process.env.NODE_ENV = "test";
 process.env.CLIENT_ORIGIN = "http://localhost:5173";
@@ -13,6 +15,7 @@ process.env.COOKIE_SAME_SITE = "lax";
 process.env.AUTH_RATE_LIMIT_WINDOW_MS = "60000";
 process.env.AUTH_RATE_LIMIT_MAX = "100";
 process.env.BETA_INVITE_ONLY = "false";
+process.env.UPLOAD_ROOT = path.join(process.cwd(), "uploads", "test-runtime");
 
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
@@ -109,6 +112,10 @@ beforeEach(() => {
   vi.resetAllMocks();
 });
 
+afterEach(async () => {
+  await fs.rm(process.env.UPLOAD_ROOT, { recursive: true, force: true });
+});
+
 describe("auth API", () => {
   it("sets security headers on API responses", async () => {
     const response = await request(app).get("/api/health").expect(200);
@@ -126,6 +133,26 @@ describe("auth API", () => {
 
     expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
     expect(response.headers["access-control-allow-credentials"]).toBe("true");
+  });
+
+  it("allows uploaded assets to render from the configured frontend origin", async () => {
+    const uploadFixtureDir = path.join(process.env.UPLOAD_ROOT, "test-assets");
+    const uploadFixturePath = path.join(uploadFixtureDir, "avatar.txt");
+
+    await fs.mkdir(uploadFixtureDir, { recursive: true });
+    await fs.writeFile(uploadFixturePath, "avatar asset");
+
+    try {
+      const response = await request(app)
+        .get("/uploads/test-assets/avatar.txt")
+        .set("Origin", "http://localhost:5173")
+        .expect(200);
+
+      expect(response.headers["access-control-allow-origin"]).toBe("http://localhost:5173");
+      expect(response.headers["cross-origin-resource-policy"]).toBe("cross-origin");
+    } finally {
+      await fs.rm(uploadFixtureDir, { recursive: true, force: true });
+    }
   });
 
   it("adds rate limit headers to auth endpoints", async () => {
@@ -510,6 +537,66 @@ describe("auth API", () => {
       .expect(400);
 
     expect(response.body.message).toBe("Certaines informations sont invalides. Verifiez les champs puis reessayez.");
+    expect(mockPrisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it("uploads a validated profile avatar image", async () => {
+    const agent = request.agent(app);
+    const png = Buffer.alloc(33);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png, 0);
+    png.writeUInt32BE(300, 16);
+    png.writeUInt32BE(300, 20);
+    const updatedUser = { ...user, avatarUrl: "http://127.0.0.1:4000/uploads/avatars/profile.png" };
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+    mockPrisma.user.update.mockResolvedValueOnce(updatedUser);
+
+    const response = await agent
+      .post("/api/auth/me/avatar")
+      .set(await csrfHeaders(agent))
+      .set("Content-Type", "image/png")
+      .send(png)
+      .expect(201);
+
+    expect(response.body.user.avatarUrl).toContain("/uploads/avatars/");
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: user.id },
+      data: expect.objectContaining({
+        avatarUrl: expect.stringContaining("/uploads/avatars/")
+      })
+    }));
+  });
+
+  it("rejects profile avatar images that are too small", async () => {
+    const agent = request.agent(app);
+    const png = Buffer.alloc(33);
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png, 0);
+    png.writeUInt32BE(120, 16);
+    png.writeUInt32BE(120, 20);
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+    mockPrisma.user.create.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/register")
+      .send({ name: user.name, email: user.email, password: "Password123!" })
+      .expect(201);
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+    await agent
+      .post("/api/auth/me/avatar")
+      .set(await csrfHeaders(agent))
+      .set("Content-Type", "image/png")
+      .send(png)
+      .expect(400);
+
     expect(mockPrisma.user.update).not.toHaveBeenCalled();
   });
 

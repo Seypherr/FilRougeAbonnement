@@ -233,14 +233,15 @@ function ServiceNameInput({ t, value, error, onChange, onSelectService }) {
 }
 
 function PaymentLogo({ name }) {
-  const [source, setSource] = useState("logo");
   const logo = getPaymentMethodLogo(name);
+  const preferredSource = logo?.url?.includes("img.logo.dev") && logo?.fallbackUrl ? "favicon" : "logo";
+  const [source, setSource] = useState(preferredSource);
   const showImage = logo?.hasLogo && source !== "fallback";
   const imageSrc = source === "favicon" ? logo?.fallbackUrl : logo?.url;
 
   useEffect(() => {
-    setSource("logo");
-  }, [logo?.domain]);
+    setSource(preferredSource);
+  }, [logo?.domain, logo?.fallbackUrl, logo?.url, preferredSource]);
 
   return (
     <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
@@ -251,7 +252,7 @@ function PaymentLogo({ name }) {
           className="size-full object-contain p-1.5"
           loading="lazy"
           referrerPolicy="no-referrer"
-          onError={() => setSource((current) => (current === "logo" ? "favicon" : "fallback"))}
+          onError={() => setSource((current) => (current === "logo" && logo?.fallbackUrl ? "favicon" : "fallback"))}
         />
       ) : (
         <span className="grid size-full place-items-center text-[11px] font-black" style={logo?.style}>

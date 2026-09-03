@@ -84,20 +84,27 @@ describe("subscription logos", () => {
     expect(getPaymentMethodLogo("Local Bank")).toEqual(expect.objectContaining({ domain: null, hasLogo: false, initials: "LB" }));
   });
 
-  it("renders a Logo.dev image for known subscriptions", () => {
+  it("renders a public favicon image for known subscriptions", () => {
     render(<SubscriptionLogo name="Spotify Family" />);
 
     const logo = screen.getByAltText("Spotify logo");
     expect(logo).toBeInTheDocument();
-    expect(logo).toHaveAttribute("src", expect.stringContaining("https://img.logo.dev/spotify.com"));
+    expect(logo).toHaveAttribute("src", expect.stringContaining("https://www.google.com/s2/favicons"));
   });
 
-  it("switches to a public favicon image if Logo.dev fails", () => {
+  it("uses a local custom logo before any favicon fallback", () => {
+    render(<SubscriptionLogo name="GMProno" />);
+
+    expect(screen.getByAltText("GMProno logo")).toHaveAttribute("src", "/gmprono-favicon.png");
+  });
+
+  it("switches to the initial fallback if the public favicon fails", () => {
     render(<SubscriptionLogo name="Netflix Premium" />);
 
     fireEvent.error(screen.getByAltText("Netflix logo"));
 
-    expect(screen.getByAltText("Netflix logo")).toHaveAttribute("src", expect.stringContaining("https://www.google.com/s2/favicons"));
+    expect(screen.queryByAltText("Netflix logo")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Netflix Premium fallback logo")).toHaveTextContent("N");
   });
 
   it("uses an initial fallback for unknown subscriptions", () => {
@@ -108,13 +115,13 @@ describe("subscription logos", () => {
   });
 
   it("falls back to the initial if every image source fails to load", () => {
-    render(<SubscriptionLogo name="Netflix Premium" />);
+    render(<SubscriptionLogo name="GMProno" />);
 
-    fireEvent.error(screen.getByAltText("Netflix logo"));
-    fireEvent.error(screen.getByAltText("Netflix logo"));
+    fireEvent.error(screen.getByAltText("GMProno logo"));
+    fireEvent.error(screen.getByAltText("GMProno logo"));
 
-    expect(screen.queryByAltText("Netflix logo")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Netflix Premium fallback logo")).toHaveTextContent("N");
+    expect(screen.queryByAltText("GMProno logo")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("GMProno fallback logo")).toHaveTextContent("G");
   });
 
   it("generates a stable colored fallback from the service name", () => {

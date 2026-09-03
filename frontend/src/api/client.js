@@ -114,3 +114,23 @@ export async function apiRequest(path, options = {}) {
     throw error;
   }
 }
+
+export async function uploadAvatarFile(file) {
+  const response = await fetch(`${API_URL}/auth/me/avatar`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": file.type,
+      [CSRF_HEADER]: await getCsrfToken()
+    },
+    body: file
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(getFriendlyApiError(data.message, response.status, "/auth/me/avatar"));
+  }
+
+  return data;
+}

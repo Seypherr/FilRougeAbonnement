@@ -1,4 +1,4 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import {
   completeOnboarding,
   deleteMe,
@@ -11,6 +11,7 @@ import {
   resendVerificationEmail,
   resetPassword,
   updateMe,
+  uploadAvatar,
   verifyEmail
 } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middlewares/auth.js";
@@ -38,6 +39,7 @@ authRouter.get("/csrf", csrfToken);
 authRouter.get("/me", me);
 authRouter.post("/resend-verification", requireAuth, resendVerificationEmail);
 authRouter.put("/me", requireAuth, validate(profileUpdateSchema), updateMe);
+authRouter.post("/me/avatar", requireAuth, express.raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: "2mb" }), uploadAvatar);
 authRouter.post("/onboarding/complete", requireAuth, validate(onboardingCompleteSchema), completeOnboarding);
 authRouter.get("/me/export", requireAuth, exportMyData);
 authRouter.delete("/me", requireAuth, deleteMe);

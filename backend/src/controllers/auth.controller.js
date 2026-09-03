@@ -17,6 +17,7 @@ import {
 import { isEmailDeliveryConfigured, sendPasswordResetEmail, sendVerificationEmail } from "../services/email.service.js";
 import { clearCsrfCookie } from "../middlewares/csrf.js";
 import { recordMetric } from "../services/metrics.service.js";
+import { getPublicOrigin, saveAvatarUpload } from "../services/avatar.service.js";
 
 function canUsePremiumFeatures(user) {
   return user.accessPlan === "BETA" || user.accessPlan === "PREMIUM";
@@ -276,6 +277,19 @@ export const updateMe = asyncHandler(async (req, res) => {
   }
 
   res.json({ user });
+});
+
+export const uploadAvatar = asyncHandler(async (req, res) => {
+  const mimeType = req.get("content-type")?.split(";")[0]?.toLowerCase();
+  const buffer = req.body;
+  const avatarUrl = await saveAvatarUpload({ buffer, mimeType, userId: req.user.id, publicOrigin: getPublicOrigin(req) });
+  const user = await prisma.user.update({
+    where: { id: req.user.id },
+    data: { avatarUrl },
+    select: publicUserSelect
+  });
+
+  res.status(201).json({ user });
 });
 
 export const completeOnboarding = asyncHandler(async (req, res) => {
